@@ -74,6 +74,9 @@ Route::group([
 
     // Reports & Analytics
     Route::get('reports/revenue', [\App\Http\Controllers\ReportController::class, 'revenueReport'])->middleware('rbac:view_financial_reports');
-    Route::get('reports/dashboard', [\App\Http\Controllers\ReportController::class, 'dashboardStats'])->middleware('rbac:view_reports');
+    Route::get('reports/dashboard-stats', [\App\Http\Controllers\ReportController::class, 'dashboardStats'])->middleware('rbac:view_reports');
     Route::get('invoices/{id}/export', [\App\Http\Controllers\ReportController::class, 'exportInvoice'])->middleware('rbac:view_invoices');
+    Route::get('admin/audit-logs', function() {
+        return \App\Models\AuditLog::latest()->paginate(20);
+    })->middleware('rbac:view_audit_trail');
 });

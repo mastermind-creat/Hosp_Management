@@ -18,7 +18,8 @@ import {
     Search,
     User,
     Wifi,
-    WifiOff
+    WifiOff,
+    Fingerprint
 } from 'lucide-react'
 import { logout } from '../../store/slices/authSlice'
 import { toggleTheme } from '../../store/slices/uiSlice'
@@ -53,6 +54,8 @@ const MainLayout = () => {
         { name: 'Pharmacy', path: '/pharmacy', icon: Pill },
         { name: 'Laboratory', path: '/lab', icon: FlaskConical },
         { name: 'Reports', path: '/reports', icon: BarChart3 },
+        { name: 'Staff', path: '/admin/users', icon: Users },
+        { name: 'Audit', path: '/admin/audit', icon: Fingerprint },
     ]
 
     const handleLogout = () => {
@@ -89,8 +92,8 @@ const MainLayout = () => {
                                 key={item.name}
                                 to={item.path}
                                 className={`flex items-center px-3 py-2.5 rounded-xl transition-all group ${isActive
-                                        ? 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-medium shadow-sm shadow-indigo-100 dark:shadow-none'
-                                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white'
+                                    ? 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-medium shadow-sm shadow-indigo-100 dark:shadow-none'
+                                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white'
                                     }`}
                             >
                                 <item.icon className={`w-5 h-5 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'group-hover:scale-110 transition-transform'}`} />
@@ -143,8 +146,8 @@ const MainLayout = () => {
                     <div className="flex items-center space-x-3">
                         {/* Offline Indicator */}
                         <div className={`flex items-center px-3 py-1 rounded-full text-xs font-medium border ${isOnline
-                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
-                                : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
+                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800'
+                            : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
                             }`}>
                             {isOnline ? (
                                 <><Wifi className="w-3 h-3 mr-1.5" /> Online</>

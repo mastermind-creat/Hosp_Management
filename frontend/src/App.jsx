@@ -29,6 +29,11 @@ import LabDashboard from './pages/lab/LabDashboard'
 import LabRequestForm from './pages/lab/LabRequestForm'
 import ResultEntry from './pages/lab/ResultEntry'
 
+// Admin & Report Pages
+import UserList from './pages/users/UserList'
+import AuditTrail from './pages/users/AuditTrail'
+import ReportsDashboard from './pages/reports/ReportsDashboard'
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated } = useSelector((state) => state.auth)
@@ -114,7 +119,10 @@ function App() {
                     <Route path="/lab" element={<LabDashboard />} />
                     <Route path="/lab/requests/new" element={<LabRequestForm />} />
                     <Route path="/lab/requests/:id/results" element={<ResultEntry />} />
-                    <Route path="/reports" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold dark:text-white">Reports Module Coming Soon</h2></div>} />
+                    {/* Admin & System Routes */}
+                    <Route path="/admin/users" element={<UserList />} />
+                    <Route path="/admin/audit" element={<AuditTrail />} />
+                    <Route path="/reports" element={<ReportsDashboard />} />
                 </Route>
 
                 {/* Catch all */}

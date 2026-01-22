@@ -86,4 +86,9 @@ class User extends Authenticatable implements JWTSubject
             $query->where('name', $permission);
         })->exists();
     }
+
+    public function staffProfile()
+    {
+        return $this->hasOne(StaffProfile::class);
+    }
 }

@@ -19,14 +19,24 @@ import {
     User,
     Wifi,
     WifiOff,
-    Fingerprint
+    Fingerprint,
+    Briefcase,
+    Activity,
+    ShieldCheck,
+    Database,
+    ScrollText,
+    ClipboardList
 } from 'lucide-react'
 import { logout } from '../../store/slices/authSlice'
 import { toggleTheme } from '../../store/slices/uiSlice'
+import api from '../../services/api'
+import NotificationsPanel from '../common/NotificationsPanel'
 
 const MainLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
     const [isOnline, setIsOnline] = useState(navigator.onLine)
+    const [showNotifications, setShowNotifications] = useState(false)
+    const [alerts, setAlerts] = useState(null)
     const location = useLocation()
     const dispatch = useDispatch()
     const navigate = useNavigate()
@@ -40,9 +50,23 @@ const MainLayout = () => {
         window.addEventListener('online', handleOnline)
         window.addEventListener('offline', handleOffline)
 
+        // Notification polling
+        const fetchNotifications = async () => {
+            try {
+                const response = await api.get('/notifications')
+                setAlerts(response.data)
+            } catch (error) {
+                console.error('Failed to fetch notifications')
+            }
+        }
+
+        fetchNotifications()
+        const interval = setInterval(fetchNotifications, 60000)
+
         return () => {
             window.removeEventListener('online', handleOnline)
             window.removeEventListener('offline', handleOffline)
+            clearInterval(interval)
         }
     }, [])
 
@@ -50,12 +74,18 @@ const MainLayout = () => {
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { name: 'Patients', path: '/patients', icon: Users },
         { name: 'Appointments', path: '/appointments', icon: Calendar },
+        { name: 'Clinical', path: '/clinical', icon: Activity },
         { name: 'Billing', path: '/billing', icon: FileText },
         { name: 'Pharmacy', path: '/pharmacy', icon: Pill },
         { name: 'Laboratory', path: '/lab', icon: FlaskConical },
+        { name: 'Staff & HR', path: '/staff', icon: Briefcase },
+        { name: 'Insurance', path: '/insurance', icon: ShieldCheck },
         { name: 'Reports', path: '/reports', icon: BarChart3 },
-        { name: 'Staff', path: '/admin/users', icon: Users },
-        { name: 'Audit', path: '/admin/audit', icon: Fingerprint },
+        { name: 'Audit Trail', path: '/admin/audit', icon: Fingerprint },
+        { name: 'System Tools', path: '/admin/backups', icon: Database },
+        { name: 'Clinical Templates', path: '/admin/clinical-templates', icon: ClipboardList },
+        { name: 'System Logs', path: '/admin/system-logs', icon: ScrollText },
+        { name: 'Settings', path: '/settings', icon: Settings },
     ]
 
     const handleLogout = () => {
@@ -156,10 +186,23 @@ const MainLayout = () => {
                             )}
                         </div>
 
-                        <button className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg relative transition-colors">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 border-2 border-white dark:border-slate-800 rounded-full"></span>
-                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                className="p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg relative transition-colors"
+                            >
+                                <Bell className="w-5 h-5" />
+                                {alerts?.counts > 0 && (
+                                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 border-2 border-white dark:border-slate-800 rounded-full"></span>
+                                )}
+                            </button>
+                            {showNotifications && (
+                                <NotificationsPanel
+                                    alerts={alerts}
+                                    onClose={() => setShowNotifications(false)}
+                                />
+                            )}
+                        </div>
 
                         <button
                             onClick={() => dispatch(toggleTheme())}

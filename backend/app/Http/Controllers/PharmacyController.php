@@ -88,4 +88,9 @@ class PharmacyController extends Controller
     {
         return response()->json($this->pharmacyService->getStockAlerts());
     }
+
+    public function suppliers()
+    {
+        return response()->json(Supplier::where('is_active', true)->get());
+    }
 }

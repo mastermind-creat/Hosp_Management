@@ -28,6 +28,7 @@ import {
 } from 'recharts'
 import api from '../../services/api'
 import { formatKES } from '../../utils/format'
+import SyncStatus from '../../components/dashboard/SyncStatus'
 
 const data = [
     { name: 'Mon', patients: 40, revenue: 240000 },
@@ -97,6 +98,10 @@ const Dashboard = () => {
                         <Filter className="w-5 h-5" />
                     </button>
                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <SyncStatus />
             </div>
 
             {/* Stats Grid */}

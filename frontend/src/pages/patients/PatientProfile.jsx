@@ -12,6 +12,7 @@ import {
     FlaskConical,
     ArrowLeft,
     Edit,
+    Edit2,
     Plus,
     History,
     MoreHorizontal,
@@ -64,8 +65,16 @@ const HistoryTab = ({ encounters, loading }) => {
                             <div className="text-slate-800 dark:text-white font-bold mb-1">
                                 {encounter.diagnosis || 'No diagnosis recorded'}
                             </div>
-                            <div className="text-slate-500 dark:text-slate-400 text-xs line-clamp-2">
+                            <div className="text-slate-500 dark:text-slate-400 text-xs line-clamp-2 mb-3">
                                 {encounter.chief_complaint || 'No complaint details recorded.'}
+                            </div>
+                            <div className="flex border-t border-slate-100 dark:border-slate-700 mt-2 pt-2">
+                                <Link
+                                    to={`/clinical/encounters/${encounter.patient_id}/edit/${encounter.id}`}
+                                    className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                                >
+                                    <Edit2 className="w-3 h-3" /> Edit Encounter
+                                </Link>
                             </div>
                         </div>
                     </div>
@@ -209,10 +218,10 @@ const PatientProfile = () => {
                                     <SectionTitle title="Vitals Summary" icon={Activity} />
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                         {[
-                                            { label: 'Weight', value: encounters[0]?.vitals?.weight ? `${encounters[0].vitals.weight}kg` : '--', change: 'Latest' },
-                                            { label: 'BP', value: encounters[0]?.vitals?.blood_pressure || '--', change: 'Latest' },
-                                            { label: 'Pulse', value: encounters[0]?.vitals?.pulse_rate || '--', change: 'Latest' },
-                                            { label: 'Temp', value: encounters[0]?.vitals?.temperature ? `${encounters[0].vitals.temperature}°C` : '--', change: 'Latest' },
+                                            { label: 'Weight', value: (Array.isArray(encounters) && encounters[0]?.vitals?.weight) ? `${encounters[0].vitals.weight}kg` : '--', change: 'Latest' },
+                                            { label: 'BP', value: (Array.isArray(encounters) && encounters[0]?.vitals?.blood_pressure) || '--', change: 'Latest' },
+                                            { label: 'Pulse', value: (Array.isArray(encounters) && encounters[0]?.vitals?.pulse_rate) || '--', change: 'Latest' },
+                                            { label: 'Temp', value: (Array.isArray(encounters) && encounters[0]?.vitals?.temperature) ? `${encounters[0].vitals.temperature}°C` : '--', change: 'Latest' },
                                         ].map((item, idx) => (
                                             <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
                                                 <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">{item.label}</p>

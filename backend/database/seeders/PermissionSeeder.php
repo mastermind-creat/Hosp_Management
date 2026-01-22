@@ -58,7 +58,21 @@ class PermissionSeeder extends Seeder
             ['name' => 'export_reports', 'display_name' => 'Export Reports (PDF/Excel)', 'module' => 'reports'],
 
             // Audit
-            ['name' => 'view_audit_logs', 'display_name' => 'View Audit Logs', 'module' => 'audit'],
+            ['name' => 'view_audit_trail', 'display_name' => 'View Audit Trail', 'module' => 'audit'],
+
+            // Staff & HR Management
+            ['name' => 'manage_staff', 'display_name' => 'Manage Staff Records', 'module' => 'staff'],
+            ['name' => 'manage_departments', 'display_name' => 'Manage Departments', 'module' => 'staff'],
+            ['name' => 'manage_designations', 'display_name' => 'Manage Designations', 'module' => 'staff'],
+
+            // Appointment & Scheduling
+            ['name' => 'view_appointments', 'display_name' => 'View Appointments', 'module' => 'appointments'],
+            ['name' => 'create_appointments', 'display_name' => 'Book Appointments', 'module' => 'appointments'],
+            ['name' => 'manage_schedules', 'display_name' => 'Manage Doctor Schedules', 'module' => 'appointments'],
+
+            // Insurance / SHIF Handling
+            ['name' => 'manage_insurance', 'display_name' => 'Manage Insurance Providers', 'module' => 'insurance'],
+            ['name' => 'view_insurance_claims', 'display_name' => 'View Insurance Claims', 'module' => 'insurance'],
         ];
 
         foreach ($permissions as $permission) {

@@ -71,9 +71,21 @@ class PatientController extends Controller
         
         $validated = $request->validate([
             'first_name' => 'sometimes|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
             'last_name' => 'sometimes|string|max:255',
+            'date_of_birth' => 'sometimes|date',
+            'gender' => 'sometimes|in:male,female,other',
+            'national_id' => 'nullable|string',
             'phone' => 'nullable|string',
             'email' => 'nullable|email',
+            'address' => 'nullable|string',
+            'city' => 'nullable|string',
+            'county' => 'nullable|string',
+            'insurance_provider' => 'nullable|string',
+            'insurance_number' => 'nullable|string',
+            'insurance_type' => 'sometimes|in:nhif,private,corporate,none',
+            'emergency_contact_name' => 'nullable|string',
+            'emergency_contact_phone' => 'nullable|string',
             'is_active' => 'sometimes|boolean',
         ]);
 

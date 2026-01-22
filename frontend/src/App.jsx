@@ -15,6 +15,7 @@ import PatientList from './pages/patients/PatientList'
 import PatientForm from './pages/patients/PatientForm'
 import PatientProfile from './pages/patients/PatientProfile'
 import EncounterForm from './pages/clinical/EncounterForm'
+import ClinicalQueue from './pages/clinical/ClinicalQueue'
 
 // Billing Pages
 import InvoiceList from './pages/billing/InvoiceList'
@@ -33,6 +34,23 @@ import ResultEntry from './pages/lab/ResultEntry'
 import UserList from './pages/users/UserList'
 import AuditTrail from './pages/users/AuditTrail'
 import ReportsDashboard from './pages/reports/ReportsDashboard'
+
+// Staff & HR Pages
+import StaffList from './pages/staff/StaffList'
+import StaffForm from './pages/staff/StaffForm'
+import DepartmentSetup from './pages/staff/DepartmentSetup'
+
+// Appointment Pages
+import AppointmentsCalendar from './pages/appointments/AppointmentsCalendar'
+
+// Insurance Pages
+import InsuranceDashboard from './pages/insurance/InsuranceDashboard'
+
+// System Pages
+import BackupSettings from './pages/admin/BackupSettings'
+import SystemLogs from './pages/admin/SystemLogs'
+import SystemSettings from './pages/admin/SystemSettings'
+import ClinicalTemplates from './pages/admin/ClinicalTemplates'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -105,23 +123,39 @@ function App() {
                     <Route path="/patients/:patientId/encounter" element={<EncounterForm />} />
 
                     {/* Clinical Routes */}
+                    <Route path="/clinical" element={<ClinicalQueue />} />
                     <Route path="/clinical/encounters/:patientId" element={<EncounterForm />} />
+                    <Route path="/clinical/encounters/:patientId/edit/:encounterId" element={<EncounterForm />} />
 
-                    {/* Placeholder for other routes */}
-                    <Route path="/appointments" element={<div className="p-8 text-center"><h2 className="text-2xl font-bold dark:text-white">Appointments Module Coming Soon</h2></div>} />
-                    {/* Billing Routes */}
+                    {/* Staff & HR Routes */}
+                    <Route path="/staff" element={<StaffList />} />
+                    <Route path="/staff/new" element={<StaffForm />} />
+                    <Route path="/staff/structure" element={<DepartmentSetup />} />
+
+                    {/* Appointment Routes */}
+                    <Route path="/appointments" element={<AppointmentsCalendar />} />
+
+                    {/* Billing Routes ... */}
                     <Route path="/billing" element={<InvoiceList />} />
                     <Route path="/billing/new" element={<InvoiceForm />} />
                     <Route path="/billing/invoices/:id" element={<InvoiceDetail />} />
                     <Route path="/pharmacy" element={<Inventory />} />
 
-                    {/* Lab Routes */}
+                    {/* Lab Routes ... */}
                     <Route path="/lab" element={<LabDashboard />} />
                     <Route path="/lab/requests/new" element={<LabRequestForm />} />
                     <Route path="/lab/requests/:id/results" element={<ResultEntry />} />
+
+                    {/* Insurance Routes */}
+                    <Route path="/insurance" element={<InsuranceDashboard />} />
+
                     {/* Admin & System Routes */}
                     <Route path="/admin/users" element={<UserList />} />
                     <Route path="/admin/audit" element={<AuditTrail />} />
+                    <Route path="/admin/backups" element={<BackupSettings />} />
+                    <Route path="/admin/system-logs" element={<SystemLogs />} />
+                    <Route path="/admin/clinical-templates" element={<ClinicalTemplates />} />
+                    <Route path="/settings" element={<SystemSettings />} />
                     <Route path="/reports" element={<ReportsDashboard />} />
                 </Route>
 

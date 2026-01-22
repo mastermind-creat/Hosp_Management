@@ -13,10 +13,12 @@ use Illuminate\Support\Str;
 class PaymentController extends Controller
 {
     protected $invoiceService;
+    protected $deviceService;
 
-    public function __construct(\App\Services\InvoiceService $invoiceService)
+    public function __construct(\App\Services\InvoiceService $invoiceService, \App\Services\DeviceService $deviceService)
     {
         $this->invoiceService = $invoiceService;
+        $this->deviceService = $deviceService;
     }
 
     public function store(Request $request)
@@ -73,6 +75,7 @@ class PaymentController extends Controller
             
             $report = DailySummary::create(array_merge($summaryData, [
                 'generated_by' => auth()->id(),
+                'terminal_id' => $this->deviceService->getIdentity()['terminal_id'] ?? null,
             ]));
 
             return response()->json($report, 201);

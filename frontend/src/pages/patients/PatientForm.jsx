@@ -18,7 +18,7 @@ import {
     Info,
     Smartphone
 } from 'lucide-react'
-import { createPatient, fetchPatientById } from '../../store/slices/patientSlice'
+import { createPatient, fetchPatientById, updatePatient } from '../../store/slices/patientSlice'
 import { toast } from 'react-hot-toast'
 
 const patientSchema = z.object({
@@ -26,10 +26,10 @@ const patientSchema = z.object({
     last_name: z.string().min(2, 'Last name is required'),
     email: z.string().email('Invalid email address').or(z.literal('')),
     phone: z.string().min(10, 'Valid phone number is required'),
-    dob: z.string().min(1, 'Date of birth is required'),
+    date_of_birth: z.string().min(1, 'Date of birth is required'),
     gender: z.enum(['male', 'female', 'other']),
     address: z.string().min(5, 'Address is required'),
-    id_number: z.string().min(5, 'ID/Passport number is required'),
+    national_id: z.string().min(5, 'ID/Passport number is required'),
     emergency_contact_name: z.string().min(2, 'Emergency contact name is required'),
     emergency_contact_phone: z.string().min(10, 'Emergency contact phone is required'),
 })
@@ -66,7 +66,10 @@ const PatientForm = () => {
     }, [currentPatient, isEdit, reset])
 
     const onSubmit = async (data) => {
-        const result = await dispatch(createPatient(data))
+        const result = isEdit
+            ? await dispatch(updatePatient({ id, data }))
+            : await dispatch(createPatient(data))
+
         if (!result.error) {
             toast.success(isEdit ? 'Patient updated successfully' : 'Patient registered successfully')
             navigate('/patients')
@@ -134,11 +137,11 @@ const PatientForm = () => {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">Date of Birth</label>
                                 <input
-                                    {...register('dob')}
+                                    {...register('date_of_birth')}
                                     type="date"
                                     className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all dark:text-white"
                                 />
-                                {errors.dob && <p className="text-xs text-red-500 ml-1">{errors.dob.message}</p>}
+                                {errors.date_of_birth && <p className="text-xs text-red-500 ml-1">{errors.date_of_birth.message}</p>}
                             </div>
                         </div>
                     </section>
@@ -171,11 +174,11 @@ const PatientForm = () => {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">ID / Passport Number</label>
                                 <input
-                                    {...register('id_number')}
+                                    {...register('national_id')}
                                     className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all dark:text-white"
                                     placeholder="National ID or Passport"
                                 />
-                                {errors.id_number && <p className="text-xs text-red-500 ml-1">{errors.id_number.message}</p>}
+                                {errors.national_id && <p className="text-xs text-red-500 ml-1">{errors.national_id.message}</p>}
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">Physical Address</label>

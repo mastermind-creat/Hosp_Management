@@ -8,12 +8,13 @@ import syncReducer from './slices/syncSlice'
 
 import clinicalReducer from './slices/clinicalSlice'
 import billingReducer from './slices/billingSlice'
+import labReducer from './slices/labSlice'
 
 const persistConfig = {
     key: 'hospital-root',
     version: 1,
     storage,
-    whitelist: ['auth', 'ui', 'patient', 'sync', 'clinical', 'billing'], // Persist these slices
+    whitelist: ['auth', 'ui', 'patient', 'sync', 'clinical', 'billing', 'lab'], // Persist these slices
 }
 
 const rootReducer = combineReducers({
@@ -23,6 +24,7 @@ const rootReducer = combineReducers({
     sync: syncReducer,
     clinical: clinicalReducer,
     billing: billingReducer,
+    lab: labReducer,
 })
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)

@@ -62,11 +62,36 @@ export const storeTreatmentNote = createAsyncThunk(
     }
 )
 
+export const fetchEncounterDetails = createAsyncThunk(
+    'clinical/fetchEncounterDetails',
+    async (id, { rejectWithValue }) => {
+        try {
+            const response = await api.get(`/clinical/visits/${id}`)
+            return response.data
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to fetch encounter details')
+        }
+    }
+)
+
+export const fetchClinicalTemplates = createAsyncThunk(
+    'clinical/fetchClinicalTemplates',
+    async (params, { rejectWithValue }) => {
+        try {
+            const response = await api.get('/clinical/templates', { params })
+            return response.data
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to fetch templates')
+        }
+    }
+)
+
 const clinicalSlice = createSlice({
     name: 'clinical',
     initialState: {
         currentVisit: null,
         encounters: [],
+        templates: [],
         loading: false,
         error: null,
     },
@@ -97,7 +122,7 @@ const clinicalSlice = createSlice({
             })
             .addCase(fetchPatientVisits.fulfilled, (state, action) => {
                 state.loading = false
-                state.encounters = action.payload
+                state.encounters = action.payload.data || action.payload
             })
             .addCase(fetchPatientVisits.rejected, (state, action) => {
                 state.loading = false
@@ -115,6 +140,23 @@ const clinicalSlice = createSlice({
                     state.currentVisit.diagnosis = action.payload.diagnosis
                     state.currentVisit.treatment_plan = action.payload.treatment_plan
                 }
+            })
+            // Fetch Encounter Details
+            .addCase(fetchEncounterDetails.pending, (state) => {
+                state.loading = true
+                state.error = null
+            })
+            .addCase(fetchEncounterDetails.fulfilled, (state, action) => {
+                state.loading = false
+                state.currentVisit = action.payload
+            })
+            .addCase(fetchEncounterDetails.rejected, (state, action) => {
+                state.loading = false
+                state.error = action.payload
+            })
+            // Fetch Templates
+            .addCase(fetchClinicalTemplates.fulfilled, (state, action) => {
+                state.templates = action.payload
             })
     },
 })

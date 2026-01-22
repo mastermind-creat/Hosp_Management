@@ -27,6 +27,11 @@ const pharmacyService = {
     dispenseDrug: async (data) => {
         const response = await api.post('/pharmacy/dispense', data);
         return response.data;
+    },
+
+    getSuppliers: async () => {
+        const response = await api.get('/pharmacy/suppliers');
+        return response.data;
     }
 };
 

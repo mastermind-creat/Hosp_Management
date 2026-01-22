@@ -45,4 +45,9 @@ class PatientVisit extends Model
     {
         return $this->hasOne(Vital::class, 'visit_id');
     }
+
+    public function prescriptions()
+    {
+        return $this->hasMany(Prescription::class, 'visit_id');
+    }
 }

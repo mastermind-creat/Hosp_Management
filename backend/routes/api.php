@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BackupController;
+use App\Http\Controllers\InsuranceProviderController;
 use Illuminate\Support\Facades\Route;
 
 Route::group([
@@ -23,6 +25,11 @@ Route::group([
     Route::put('users/{id}', [\App\Http\Controllers\UserController::class, 'update'])->middleware('rbac:edit_users');
     Route::delete('users/{id}', [\App\Http\Controllers\UserController::class, 'destroy'])->middleware('rbac:delete_users');
 
+    // Staff & HR Management
+    Route::apiResource('staff', \App\Http\Controllers\StaffController::class)->middleware('rbac:manage_staff');
+    Route::apiResource('departments', \App\Http\Controllers\DepartmentController::class)->middleware('rbac:manage_departments');
+    Route::apiResource('designations', \App\Http\Controllers\DesignationController::class)->middleware('rbac:manage_designations');
+
     // Role Management
     Route::get('roles', [\App\Http\Controllers\RoleController::class, 'index'])->middleware('rbac:manage_roles');
     Route::get('roles/{id}', [\App\Http\Controllers\RoleController::class, 'show'])->middleware('rbac:manage_roles');
@@ -39,12 +46,20 @@ Route::group([
     Route::get('patients/{id}/visits', [\App\Http\Controllers\PatientController::class, 'visits'])->middleware('rbac:view_visits');
 
     // Clinical Management
+    Route::get('clinical/visits/{id}', [\App\Http\Controllers\ClinicalController::class, 'show'])->middleware('rbac:view_visits');
     Route::post('clinical/visits/{id}/vitals', [\App\Http\Controllers\ClinicalController::class, 'storeVitals'])->middleware('rbac:record_vitals');
     Route::post('clinical/visits/{id}/diagnosis', [\App\Http\Controllers\ClinicalController::class, 'recordDiagnosis'])->middleware('rbac:record_diagnosis');
     Route::post('clinical/visits/{id}/notes', [\App\Http\Controllers\ClinicalController::class, 'storeTreatmentNote'])->middleware('rbac:record_vitals');
     Route::post('clinical/visits/{id}/prescriptions', [\App\Http\Controllers\ClinicalController::class, 'storePrescription'])->middleware('rbac:prescribe_drugs');
     Route::post('clinical/visits/{id}/admissions', [\App\Http\Controllers\ClinicalController::class, 'admitPatient'])->middleware('rbac:manage_admissions');
     Route::put('clinical/admissions/{id}/discharge', [\App\Http\Controllers\ClinicalController::class, 'dischargePatient'])->middleware('rbac:manage_admissions');
+
+    // Clinical Templates (Admin only for management, all for view)
+    Route::get('clinical/templates', [\App\Http\Controllers\ClinicalTemplateController::class, 'index']);
+    Route::post('clinical/templates', [\App\Http\Controllers\ClinicalTemplateController::class, 'store'])->middleware('rbac:manage_departments'); // Reusing manage_departments as proxy for clinical admin
+    Route::get('clinical/templates/{id}', [\App\Http\Controllers\ClinicalTemplateController::class, 'show']);
+    Route::put('clinical/templates/{id}', [\App\Http\Controllers\ClinicalTemplateController::class, 'update'])->middleware('rbac:manage_departments');
+    Route::delete('clinical/templates/{id}', [\App\Http\Controllers\ClinicalTemplateController::class, 'destroy'])->middleware('rbac:manage_departments');
 
     // Billing & Financials
     Route::get('invoices', [\App\Http\Controllers\BillingController::class, 'index'])->middleware('rbac:view_invoices');
@@ -62,6 +77,7 @@ Route::group([
     Route::post('drugs/{id}/stock', [\App\Http\Controllers\PharmacyController::class, 'addStock'])->middleware('rbac:manage_stock');
     Route::post('pharmacy/dispense', [\App\Http\Controllers\PharmacyController::class, 'dispense'])->middleware('rbac:dispense_drugs');
     Route::get('pharmacy/alerts', [\App\Http\Controllers\PharmacyController::class, 'stockAlerts'])->middleware('rbac:view_drugs');
+    Route::get('pharmacy/suppliers', [\App\Http\Controllers\PharmacyController::class, 'suppliers'])->middleware('rbac:view_drugs');
 
     // Laboratory Management
     Route::get('lab/tests', [\App\Http\Controllers\LabController::class, 'index'])->middleware('rbac:view_lab_requests');
@@ -76,7 +92,38 @@ Route::group([
     Route::get('reports/revenue', [\App\Http\Controllers\ReportController::class, 'revenueReport'])->middleware('rbac:view_financial_reports');
     Route::get('reports/dashboard-stats', [\App\Http\Controllers\ReportController::class, 'dashboardStats'])->middleware('rbac:view_reports');
     Route::get('invoices/{id}/export', [\App\Http\Controllers\ReportController::class, 'exportInvoice'])->middleware('rbac:view_invoices');
+    // Insurance Routes
+    Route::get('/insurance/providers', [InsuranceProviderController::class, 'index']);
+    Route::post('/insurance/providers', [InsuranceProviderController::class, 'store']); // Basic store for now
+    
+    // Backup Routes
+    Route::get('/backups', [BackupController::class, 'index']);
+    Route::post('/backups', [BackupController::class, 'store']);
+    Route::get('/backups/{filename}', [BackupController::class, 'download']);
+    Route::delete('/backups/{filename}', [BackupController::class, 'destroy']);
+
+    // Admin Only Routes
     Route::get('admin/audit-logs', function() {
         return \App\Models\AuditLog::latest()->paginate(20);
     })->middleware('rbac:view_audit_trail');
+
+    Route::get('admin/system-logs', [\App\Http\Controllers\SystemLogsController::class, 'index'])->middleware('rbac:view_audit_trail');
+    
+    // Sync Routes
+    Route::get('/sync/status', [\App\Http\Controllers\SyncController::class, 'status']);
+    Route::post('/sync/trigger', [\App\Http\Controllers\SyncController::class, 'trigger']);
+
+    // Device Routes
+    Route::get('/device/identity', [\App\Http\Controllers\DeviceController::class, 'getIdentity']);
+    Route::post('/device/facility', [\App\Http\Controllers\DeviceController::class, 'updateFacility']);
+
+    // System Settings
+    Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index']);
+    Route::post('/settings', [\App\Http\Controllers\SettingsController::class, 'update']);
+    
+    // Notifications
+    Route::get('/notifications', [\App\Http\Controllers\NotificationsController::class, 'index']);
 });
+
+// Public Config
+Route::get('/config', [\App\Http\Controllers\SettingsController::class, 'publicConfig']);

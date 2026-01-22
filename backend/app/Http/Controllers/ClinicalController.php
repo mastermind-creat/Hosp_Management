@@ -14,6 +14,12 @@ use Illuminate\Support\Str;
 
 class ClinicalController extends Controller
 {
+    public function show($id)
+    {
+        $visit = PatientVisit::with(['vitals', 'prescriptions.items', 'patient'])->findOrFail($id);
+        return response()->json($visit);
+    }
+
     public function recordDiagnosis(Request $request, $visitId)
     {
         $visit = PatientVisit::findOrFail($visitId);
@@ -21,6 +27,9 @@ class ClinicalController extends Controller
         $validated = $request->validate([
             'diagnosis' => 'required|string',
             'treatment_plan' => 'nullable|string',
+            'chief_complaint' => 'nullable|string',
+            'history_of_present_illness' => 'nullable|string',
+            'examination_findings' => 'nullable|string',
         ]);
 
         $visit->update($validated);
@@ -102,18 +111,20 @@ class ClinicalController extends Controller
             'admission_orders' => 'nullable|string',
         ]);
 
-        $admission = IpdAdmission::create(array_merge($validated, [
-            'patient_id' => $visit->patient_id,
-            'visit_id' => $visit->id,
-            'admission_number' => 'ADM-' . strtoupper(Str::random(10)),
-            'admission_date' => now(),
-            'status' => 'admitted',
-            'admitted_by' => auth()->id(),
-        ]));
+        return DB::transaction(function () use ($validated, $visit) {
+            $admission = IpdAdmission::create(array_merge($validated, [
+                'patient_id' => $visit->patient_id,
+                'visit_id' => $visit->id,
+                'admission_number' => 'ADM-' . strtoupper(Str::random(10)),
+                'admission_date' => now(),
+                'status' => 'admitted',
+                'admitted_by' => auth()->id(),
+            ]));
 
-        $visit->update(['visit_type' => 'ipd']);
+            $visit->update(['visit_type' => 'ipd']);
 
-        return response()->json($admission, 201);
+            return response()->json($admission, 201);
+        });
     }
 
     public function dischargePatient(Request $request, $admissionId)
@@ -143,22 +154,27 @@ class ClinicalController extends Controller
         $visit = PatientVisit::findOrFail($visitId);
 
         $validated = $request->validate([
-            'temperature' => 'nullable|numeric|between:30,45',
+            'temperature' => 'nullable|numeric',
             'blood_pressure' => 'nullable|string',
-            'pulse_rate' => 'nullable|integer|between:20,300',
-            'respiratory_rate' => 'nullable|integer|between:5,100',
-            'weight' => 'nullable|numeric|between:0,500',
-            'height' => 'nullable|numeric|between:0,300',
-            'oxygen_saturation' => 'nullable|integer|between:0,100',
+            'pulse_rate' => 'nullable|numeric',
+            'respiratory_rate' => 'nullable|numeric',
+            'weight' => 'nullable|numeric',
+            'height' => 'nullable|numeric',
+            'oxygen_saturation' => 'nullable|numeric',
             'notes' => 'nullable|string',
         ]);
 
+        // Filter out null/empty values to avoid validation/type issues
+        $data = array_filter($validated, function($value) {
+            return $value !== null && $value !== '';
+        });
+
         $vitals = \App\Models\Vital::updateOrCreate(
             ['visit_id' => $visit->id],
-            array_merge($validated, [
+            array_merge($data, [
                 'recorded_by' => auth()->id(),
-                'bmi' => ($validated['weight'] ?? 0) && ($validated['height'] ?? 0) 
-                    ? $validated['weight'] / ( ($validated['height']/100) * ($validated['height']/100) ) 
+                'bmi' => (isset($data['weight']) && isset($data['height']) && $data['height'] > 0) 
+                    ? $data['weight'] / ( ($data['height']/100) * ($data['height']/100) ) 
                     : null
             ])
         );

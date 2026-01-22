@@ -17,12 +17,21 @@ import {
     Trash2,
     CheckCircle2,
     AlertCircle,
-    Loader2
+    Loader2,
+    Zap,
+    ChevronDown
 } from 'lucide-react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { recordVitals, recordDiagnosis, storeTreatmentNote, clearCurrentVisit } from '../../store/slices/clinicalSlice'
+import {
+    recordVitals,
+    recordDiagnosis,
+    storeTreatmentNote,
+    clearCurrentVisit,
+    fetchEncounterDetails,
+    fetchClinicalTemplates
+} from '../../store/slices/clinicalSlice'
 import { fetchPatientById } from '../../store/slices/patientSlice'
 import api from '../../services/api'
 import { toast } from 'react-hot-toast'
@@ -67,16 +76,76 @@ const TabButton = ({ id, active, icon: Icon, label, onClick }) => (
     </button>
 )
 
+
+const TemplateSelector = ({ type, onSelect }) => {
+    const { templates = [] } = useSelector(state => state.clinical || {});
+    const [isOpen, setIsOpen] = useState(false);
+
+    const filtered = templates.filter(t => t.type === type && t.is_active);
+
+    if (filtered.length === 0) return null;
+
+    return (
+        <div className="relative">
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-all border border-indigo-100 dark:border-indigo-800"
+            >
+                <Zap className="w-3 h-3" />
+                Fast Select
+                <ChevronDown className={`w-3 h-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+                {isOpen && (
+                    <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+                        <motion.div
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-20 overflow-hidden py-2"
+                        >
+                            <div className="px-3 py-1 mb-1 border-b border-slate-100 dark:border-slate-700">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Suggestions</span>
+                            </div>
+                            <div className="max-h-60 overflow-y-auto">
+                                {filtered.map((t) => (
+                                    <button
+                                        key={t.id}
+                                        type="button"
+                                        onClick={() => {
+                                            onSelect(t.content);
+                                            setIsOpen(false);
+                                        }}
+                                        className="w-full text-left px-4 py-2 text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors border-b border-slate-50 dark:border-slate-700/50 last:border-0"
+                                    >
+                                        <p className="font-bold mb-0.5">{t.label}</p>
+                                        <p className="truncate opacity-60 italic">{t.content}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
 const EncounterForm = () => {
-    const { patientId } = useParams()
+    const { patientId, encounterId } = useParams()
     const navigate = useNavigate()
     const dispatch = useDispatch()
     const { currentPatient } = useSelector((state) => state.patient)
+    const { templates = [] } = useSelector((state) => state.clinical || {})
     const [activeTab, setActiveTab] = useState('vitals')
     const [saving, setSaving] = useState(false)
-    const [visitId, setVisitId] = useState(null)
+    const [visitId, setVisitId] = useState(encounterId || null)
+    const isEditMode = !!encounterId
 
-    const { register, control, handleSubmit, formState: { errors }, watch, setValue } = useForm({
+    const { register, control, handleSubmit, formState: { errors }, trigger, watch, setValue } = useForm({
         resolver: zodResolver(encounterSchema),
         defaultValues: {
             vitals: {},
@@ -94,12 +163,59 @@ const EncounterForm = () => {
         if (patientId) {
             dispatch(fetchPatientById(patientId))
         }
+        dispatch(fetchClinicalTemplates({ active_only: 1 }))
     }, [dispatch, patientId])
+
+    useEffect(() => {
+        if (isEditMode) {
+            const loadEncounter = async () => {
+                try {
+                    const res = await dispatch(fetchEncounterDetails(encounterId)).unwrap()
+
+                    // Populate Vitals
+                    if (res.vitals) {
+                        setValue('vitals.temperature', res.vitals.temperature?.toString() || '')
+                        setValue('vitals.blood_pressure', res.vitals.blood_pressure || '')
+                        setValue('vitals.pulse_rate', res.vitals.pulse_rate?.toString() || '')
+                        setValue('vitals.respiratory_rate', res.vitals.respiratory_rate?.toString() || '')
+                        setValue('vitals.weight', res.vitals.weight?.toString() || '')
+                        setValue('vitals.height', res.vitals.height?.toString() || '')
+                        setValue('vitals.oxygen_saturation', res.vitals.oxygen_saturation?.toString() || '')
+                    }
+
+                    // Populate Clinical Notes
+                    setValue('clinical.chief_complaint', res.chief_complaint || '')
+                    setValue('clinical.history', res.history_of_present_illness || '')
+                    setValue('clinical.examination', res.examination_findings || '')
+                    setValue('clinical.diagnosis', res.diagnosis || '')
+                    setValue('clinical.treatment_plan', res.treatment_plan || '')
+
+                    // Populate Prescriptions
+                    if (res.prescriptions && res.prescriptions.length > 0) {
+                        const allItems = res.prescriptions.reduce((acc, rx) => {
+                            const items = rx.items.map(item => ({
+                                drug_name: item.drug_name,
+                                dosage: item.dosage,
+                                frequency: item.frequency,
+                                duration_days: item.duration_days?.toString() || '',
+                                quantity: item.quantity?.toString() || '',
+                                instructions: item.instructions || ''
+                            }))
+                            return [...acc, ...items]
+                        }, [])
+                        setValue('prescriptions', allItems)
+                    }
+                } catch (err) {
+                    toast.error('Failed to load encounter details')
+                }
+            }
+            loadEncounter()
+        }
+    }, [isEditMode, encounterId, dispatch, setValue])
 
     const startVisit = async () => {
         try {
-            const res = await api.post('/patients/visits', {
-                patient_id: patientId,
+            const res = await api.post(`/patients/${patientId}/visits`, {
                 visit_type: 'opd',
                 visit_date: new Date().toISOString(),
                 status: 'active',
@@ -108,12 +224,16 @@ const EncounterForm = () => {
             setVisitId(res.data.id)
             return res.data.id
         } catch (err) {
-            toast.error('Failed to start visit session')
+            console.error('Visit creation error:', err)
+            toast.error(err.response?.data?.message || 'Failed to start visit session')
             return null
         }
     }
 
-    const onSubmit = async (data) => {
+    const saveVitals = async () => {
+        const isValid = await trigger('vitals')
+        if (!isValid) return
+
         setSaving(true)
         try {
             let id = visitId
@@ -122,33 +242,84 @@ const EncounterForm = () => {
             }
             if (!id) return
 
-            // 1. Record Vitals
-            await dispatch(recordVitals({ visitId: id, vitalsData: data.vitals }))
+            const data = watch('vitals')
+            await dispatch(recordVitals({ visitId: id, vitalsData: { ...data, visit_id: id } })).unwrap()
 
-            // 2. Record Diagnosis & Clinical Notes
+            toast.success('Vitals saved successfully')
+            setActiveTab('notes')
+        } catch (err) {
+            toast.error(err?.message || 'Failed to save vitals')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const saveClinicalNotes = async () => {
+        const isValid = await trigger('clinical')
+        if (!isValid) return
+
+        setSaving(true)
+        try {
+            let id = visitId
+            if (!id) {
+                id = await startVisit()
+            }
+            if (!id) return
+
+            const data = watch('clinical')
             await dispatch(recordDiagnosis({
                 visitId: id,
                 diagnosisData: {
-                    diagnosis: data.clinical.diagnosis,
-                    treatment_plan: data.clinical.treatment_plan,
-                    chief_complaint: data.clinical.chief_complaint,
-                    history_of_present_illness: data.clinical.history,
-                    examination_findings: data.clinical.examination
+                    diagnosis: data.diagnosis,
+                    treatment_plan: data.treatment_plan || '',
+                    chief_complaint: data.chief_complaint,
+                    history_of_present_illness: data.history || '',
+                    examination_findings: data.examination || ''
                 }
-            }))
+            })).unwrap()
 
-            // 3. Store Prescriptions if any
-            if (data.prescriptions.length > 0) {
+            toast.success('Clinical notes saved successfully')
+            setActiveTab('rx')
+        } catch (err) {
+            toast.error(err?.message || 'Failed to save clinical notes')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const finalizeEncounter = async () => {
+        const isValid = await trigger('prescriptions')
+        const hasNotes = await trigger('clinical') // Ensure diagnosis is there at least
+        if (!isValid || !hasNotes) {
+            if (!hasNotes) {
+                toast.error('Diagnosis & Chief Complaint are required!')
+                setActiveTab('notes')
+            }
+            return
+        }
+
+        setSaving(true)
+        try {
+            let id = visitId
+            if (!id) {
+                id = await startVisit()
+            }
+            if (!id) return
+
+            const rxData = watch('prescriptions')
+            const clinicalData = watch('clinical')
+
+            if (rxData && rxData.length > 0) {
                 await api.post(`/clinical/visits/${id}/prescriptions`, {
-                    items: data.prescriptions,
-                    notes: data.clinical.treatment_plan
+                    items: rxData,
+                    notes: clinicalData.treatment_plan || ''
                 })
             }
 
-            toast.success('Encounter recorded successfully!')
+            toast.success('Encounter completed successfully!')
             navigate(`/patients/${patientId}`)
         } catch (err) {
-            toast.error('Failed to save encounter')
+            toast.error(err.response?.data?.message || 'Failed to complete encounter')
         } finally {
             setSaving(false)
         }
@@ -166,7 +337,9 @@ const EncounterForm = () => {
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">New Medical Encounter</h1>
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                            {isEditMode ? 'Edit Medical Encounter' : 'New Medical Encounter'}
+                        </h1>
                         {currentPatient && (
                             <p className="text-sm text-slate-500 dark:text-slate-400">
                                 Patient: <span className="font-bold text-slate-700 dark:text-slate-200">{currentPatient.first_name} {currentPatient.last_name}</span>
@@ -175,19 +348,15 @@ const EncounterForm = () => {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleSubmit(onSubmit)}
-                        disabled={saving}
-                        className="flex items-center px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-200 dark:shadow-none disabled:opacity-50"
-                    >
-                        {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                        Complete Encounter
-                    </button>
+                    <div className="hidden md:flex flex-col items-end mr-2">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Current Stage</span>
+                        <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 capitalize">{activeTab.replace('rx', 'Prescriptions')}</span>
+                    </div>
                 </div>
             </div>
 
             {/* Main Tabs Navigation */}
-            <div className="flex p-1.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-x-auto scollbar-hide">
+            <div className="flex p-1.5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-x-auto scollbar-hide">
                 <TabButton id="vitals" active={activeTab === 'vitals'} label="Vitals" icon={Activity} onClick={setActiveTab} />
                 <TabButton id="notes" active={activeTab === 'notes'} label="Clinical Notes" icon={Stethoscope} onClick={setActiveTab} />
                 <TabButton id="rx" active={activeTab === 'rx'} label="Prescriptions" icon={Pill} onClick={setActiveTab} />
@@ -262,7 +431,18 @@ const EncounterForm = () => {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1 flex items-center gap-2">
-                                        <Activity className="w-4 h-4 text-emerald-400" /> Respiratory Rate
+                                        <Scale className="w-4 h-4 text-indigo-400" /> Height (cm)
+                                    </label>
+                                    <input
+                                        {...register('vitals.height')}
+                                        type="number" step="0.1"
+                                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all dark:text-white"
+                                        placeholder="e.g 175"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1 flex items-center gap-2">
+                                        <Activity className="w-4 h-4 text-emerald-400" /> Respiration (bpm)
                                     </label>
                                     <input
                                         {...register('vitals.respiratory_rate')}
@@ -284,6 +464,16 @@ const EncounterForm = () => {
                                         <p className="text-xs text-emerald-400 font-bold uppercase">Status</p>
                                         <p className="text-sm mt-1">Vitals are within normal range for an adult.</p>
                                     </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={saveVitals}
+                                        disabled={saving}
+                                        className="w-full flex items-center justify-center px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-indigo-200 dark:shadow-none disabled:opacity-50 mt-4"
+                                    >
+                                        {saving ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <Save className="w-5 h-5 mr-3" />}
+                                        Save Vitals & Continue
+                                    </button>
                                 </div>
                             </div>
                         </motion.div>
@@ -301,7 +491,10 @@ const EncounterForm = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Chief Complaint</label>
+                                        <div className="flex items-center justify-between ml-1">
+                                            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Chief Complaint</label>
+                                            <TemplateSelector type="complaint" onSelect={(content) => setValue('clinical.chief_complaint', content)} />
+                                        </div>
                                         <textarea
                                             {...register('clinical.chief_complaint')}
                                             rows="3"
@@ -311,7 +504,10 @@ const EncounterForm = () => {
                                         {errors.clinical?.chief_complaint && <p className="text-xs text-red-500 ml-1">{errors.clinical.chief_complaint.message}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Examination Findings</label>
+                                        <div className="flex items-center justify-between ml-1">
+                                            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Examination Findings</label>
+                                            <TemplateSelector type="finding" onSelect={(content) => setValue('clinical.examination', content)} />
+                                        </div>
                                         <textarea
                                             {...register('clinical.examination')}
                                             rows="5"
@@ -322,7 +518,10 @@ const EncounterForm = () => {
                                 </div>
                                 <div className="space-y-6">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Diagnosis / Impression</label>
+                                        <div className="flex items-center justify-between ml-1">
+                                            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Diagnosis / Impression</label>
+                                            <TemplateSelector type="diagnosis" onSelect={(content) => setValue('clinical.diagnosis', content)} />
+                                        </div>
                                         <textarea
                                             {...register('clinical.diagnosis')}
                                             rows="3"
@@ -332,7 +531,10 @@ const EncounterForm = () => {
                                         {errors.clinical?.diagnosis && <p className="text-xs text-red-500 ml-1">{errors.clinical.diagnosis.message}</p>}
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Treatment Plan</label>
+                                        <div className="flex items-center justify-between ml-1">
+                                            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Treatment Plan</label>
+                                            <TemplateSelector type="plan" onSelect={(content) => setValue('clinical.treatment_plan', content)} />
+                                        </div>
                                         <textarea
                                             {...register('clinical.treatment_plan')}
                                             rows="5"
@@ -341,6 +543,18 @@ const EncounterForm = () => {
                                         ></textarea>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="flex justify-end p-8 bg-slate-50 dark:bg-slate-900/30 border-t border-slate-100 dark:border-slate-700 rounded-b-3xl mt-6">
+                                <button
+                                    type="button"
+                                    onClick={saveClinicalNotes}
+                                    disabled={saving}
+                                    className="flex items-center px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-200 dark:shadow-none disabled:opacity-50"
+                                >
+                                    {saving ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <Save className="w-5 h-5 mr-3" />}
+                                    Save Notes & Continue
+                                </button>
                             </div>
                         </motion.div>
                     )}
@@ -396,6 +610,7 @@ const EncounterForm = () => {
                                             <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Days</label>
                                             <input
                                                 {...register(`prescriptions.${index}.duration_days`)}
+                                                type="number"
                                                 className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none dark:text-white"
                                                 placeholder="e.g 5"
                                             />
@@ -404,6 +619,7 @@ const EncounterForm = () => {
                                             <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Qty</label>
                                             <input
                                                 {...register(`prescriptions.${index}.quantity`)}
+                                                type="number"
                                                 className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none dark:text-white"
                                                 placeholder="e.g 15"
                                             />
@@ -425,6 +641,18 @@ const EncounterForm = () => {
                                         <p className="text-sm">No prescriptions added for this visit.</p>
                                     </div>
                                 )}
+                            </div>
+
+                            <div className="flex justify-end p-8 bg-slate-50 dark:bg-slate-900/30 border-t border-slate-100 dark:border-slate-700 rounded-b-3xl mt-6">
+                                <button
+                                    type="button"
+                                    onClick={finalizeEncounter}
+                                    disabled={saving}
+                                    className="flex items-center px-10 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-emerald-200 dark:shadow-none disabled:opacity-50"
+                                >
+                                    {saving ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <CheckCircle2 className="w-5 h-5 mr-3" />}
+                                    Complete & Finalize Encounter
+                                </button>
                             </div>
                         </motion.div>
                     )}

@@ -77,7 +77,7 @@ const Login = () => {
                             type="text"
                             className={`block w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/50 border ${errors.identifier ? 'border-red-300 dark:border-red-900' : 'border-slate-200 dark:border-slate-700'
                                 } rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all`}
-                            placeholder="admin or admin@hospital.com"
+                            placeholder="admin or admin@hospmanager.com"
                         />
                     </div>
                     {errors.identifier && (

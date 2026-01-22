@@ -20,8 +20,8 @@ import { fetchPatients } from '../../store/slices/patientSlice'
 
 const PatientList = () => {
     const dispatch = useDispatch()
-    const { patients, pagination, loading, error } = useSelector((state) => state.patient)
-    const { queue } = useSelector((state) => state.sync)
+    const { patients = [], pagination = {}, loading, error } = useSelector((state) => state.patient || {})
+    const { queue = [] } = useSelector((state) => state.sync || {})
     const [searchTerm, setSearchTerm] = useState('')
 
     useEffect(() => {
@@ -34,7 +34,7 @@ const PatientList = () => {
     }
 
     // Identify patients that are currently in the sync queue
-    const queuedPatients = queue
+    const queuedPatients = (queue || [])
         .filter(item => item.url === '/patients' && item.method === 'post')
         .map(item => ({
             id: item.id,
@@ -42,7 +42,7 @@ const PatientList = () => {
             isQueued: true
         }))
 
-    const allPatients = [...queuedPatients, ...patients]
+    const allPatients = [...queuedPatients, ...(Array.isArray(patients) ? patients : [])]
 
     return (
         <div className="space-y-6">
@@ -110,17 +110,17 @@ const PatientList = () => {
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold text-slate-900 dark:text-white">{patient.first_name} {patient.last_name}</p>
-                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{patient.dob}</p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{patient.date_of_birth}</p>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">#{patient.patient_id || 'PENDING'}</span>
+                                        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">#{patient.patient_number || 'PENDING'}</span>
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full capitalize ${patient.gender === 'male'
-                                                ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
-                                                : 'bg-pink-50 text-pink-600 dark:bg-pink-900/20 dark:text-pink-400'
+                                            ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                                            : 'bg-pink-50 text-pink-600 dark:bg-pink-900/20 dark:text-pink-400'
                                             }`}>
                                             {patient.gender}
                                         </span>
@@ -164,7 +164,7 @@ const PatientList = () => {
                 {/* Pagination */}
                 <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Showing <span className="font-bold text-slate-900 dark:text-white">1</span> to <span className="font-bold text-slate-900 dark:text-white">{allPatients.length}</span> of <span className="font-bold text-slate-900 dark:text-white">{pagination.total}</span> entries
+                        Showing <span className="font-bold text-slate-900 dark:text-white">1</span> to <span className="font-bold text-slate-900 dark:text-white">{allPatients.length}</span> of <span className="font-bold text-slate-900 dark:text-white">{pagination?.total || allPatients.length}</span> entries
                     </p>
                     <div className="flex gap-2">
                         <button className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 hover:text-indigo-600 disabled:opacity-50 transition-all">

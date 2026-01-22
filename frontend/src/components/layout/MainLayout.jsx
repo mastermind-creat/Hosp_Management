@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import {
     LayoutDashboard,
     Users,
@@ -21,6 +22,7 @@ import {
     WifiOff,
     Fingerprint,
     Briefcase,
+    Building2,
     Activity,
     ShieldCheck,
     Database,
@@ -40,8 +42,9 @@ const MainLayout = () => {
     const location = useLocation()
     const dispatch = useDispatch()
     const navigate = useNavigate()
-    const { user } = useSelector((state) => state.auth)
+    const { user, permissions = [] } = useSelector((state) => state.auth)
     const { theme } = useSelector((state) => state.ui)
+    const { t } = useTranslation()
 
     useEffect(() => {
         const handleOnline = () => setIsOnline(true)
@@ -71,22 +74,27 @@ const MainLayout = () => {
     }, [])
 
     const navItems = [
-        { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { name: 'Patients', path: '/patients', icon: Users },
-        { name: 'Appointments', path: '/appointments', icon: Calendar },
-        { name: 'Clinical', path: '/clinical', icon: Activity },
-        { name: 'Billing', path: '/billing', icon: FileText },
-        { name: 'Pharmacy', path: '/pharmacy', icon: Pill },
-        { name: 'Laboratory', path: '/lab', icon: FlaskConical },
-        { name: 'Staff & HR', path: '/staff', icon: Briefcase },
-        { name: 'Insurance', path: '/insurance', icon: ShieldCheck },
-        { name: 'Reports', path: '/reports', icon: BarChart3 },
-        { name: 'Audit Trail', path: '/admin/audit', icon: Fingerprint },
-        { name: 'System Tools', path: '/admin/backups', icon: Database },
-        { name: 'Clinical Templates', path: '/admin/clinical-templates', icon: ClipboardList },
-        { name: 'System Logs', path: '/admin/system-logs', icon: ScrollText },
-        { name: 'Settings', path: '/settings', icon: Settings },
+        { name: t('common.dashboard'), path: '/dashboard', icon: LayoutDashboard },
+        { name: t('common.patients'), path: '/patients', icon: Users, permission: 'view_patients' },
+        { name: t('common.appointments'), path: '/appointments', icon: Calendar, permission: 'view_appointments' },
+        { name: t('common.clinical'), path: '/clinical', icon: Activity, permission: 'view_visits' },
+        { name: t('common.billing'), path: '/billing', icon: FileText, permission: 'view_invoices' },
+        { name: t('common.pharmacy'), path: '/pharmacy', icon: Pill, permission: 'view_drugs' },
+        { name: t('common.laboratory'), path: '/lab', icon: FlaskConical, permission: 'view_lab_requests' },
+        { name: t('common.staff_hr'), path: '/staff', icon: Briefcase, permission: 'manage_staff' },
+        { name: t('common.hospital_structure'), path: '/staff/structure', icon: Building2, permission: 'manage_departments' },
+        { name: t('common.insurance'), path: '/insurance', icon: ShieldCheck, permission: 'manage_insurance' },
+        { name: t('common.reports'), path: '/reports', icon: BarChart3, permission: 'view_reports' },
+        { name: t('common.audit_trail'), path: '/admin/audit', icon: Fingerprint, permission: 'view_audit_trail' },
+        { name: t('common.system_tools'), path: '/admin/backups', icon: Database, permission: 'view_audit_trail' },
+        { name: t('common.clinical_templates'), path: '/admin/clinical-templates', icon: ClipboardList, permission: 'manage_departments' },
+        { name: t('common.system_logs'), path: '/admin/system-logs', icon: ScrollText, permission: 'view_audit_trail' },
+        { name: t('common.settings'), path: '/settings', icon: Settings },
     ]
+
+    const filteredNavItems = navItems.filter(item =>
+        !item.permission || permissions.includes(item.permission)
+    )
 
     const handleLogout = () => {
         dispatch(logout())
@@ -99,7 +107,7 @@ const MainLayout = () => {
             <motion.aside
                 initial={false}
                 animate={{ width: isSidebarOpen ? 280 : 80 }}
-                className="bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-colors z-30"
+                className="bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col transition-colors z-30 no-print"
             >
                 {/* Logo Area */}
                 <div className="h-16 flex items-center px-6 border-b border-slate-100 dark:border-slate-700">
@@ -115,7 +123,7 @@ const MainLayout = () => {
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-                    {navItems.map((item) => {
+                    {filteredNavItems.map((item) => {
                         const isActive = location.pathname.startsWith(item.path)
                         return (
                             <Link
@@ -146,7 +154,7 @@ const MainLayout = () => {
                         className="w-full flex items-center px-3 py-2.5 text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 rounded-xl transition-all"
                     >
                         <LogOut className="w-5 h-5 flex-shrink-0" />
-                        {isSidebarOpen && <span className="ml-3 font-medium">Sign Out</span>}
+                        {isSidebarOpen && <span className="ml-3 font-medium">{t('common.sign_out')}</span>}
                     </button>
                 </div>
             </motion.aside>
@@ -154,7 +162,7 @@ const MainLayout = () => {
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Header */}
-                <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 z-20">
+                <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 z-20 no-print">
                     <div className="flex items-center flex-1">
                         <button
                             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -167,7 +175,7 @@ const MainLayout = () => {
                             <Search className="w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 mr-2" />
                             <input
                                 type="text"
-                                placeholder="Search patients, invoices, tests..."
+                                placeholder={t('common.search_placeholder')}
                                 className="bg-transparent border-none focus:outline-none focus:ring-0 text-sm w-full dark:text-white dark:placeholder-slate-500"
                             />
                         </div>
@@ -180,9 +188,9 @@ const MainLayout = () => {
                             : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
                             }`}>
                             {isOnline ? (
-                                <><Wifi className="w-3 h-3 mr-1.5" /> Online</>
+                                <><Wifi className="w-3 h-3 mr-1.5" /> {t('common.online')}</>
                             ) : (
-                                <><WifiOff className="w-3 h-3 mr-1.5" /> Offline Mode</>
+                                <><WifiOff className="w-3 h-3 mr-1.5" /> {t('common.offline')}</>
                             )}
                         </div>
 

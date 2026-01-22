@@ -52,15 +52,66 @@ class ReportController extends Controller
 
     public function dashboardStats()
     {
+        $today = now()->toDateString();
+        
+        // 1. Core Summary Stats
+        $stats = [
+            'total_patients' => Patient::count(),
+            // Loosen appointment check to include all pending future appointments
+            'active_appointments' => \App\Models\Appointment::where('status', 'pending')
+                ->where('appointment_date', '>=', $today) 
+                ->count(),
+            'revenue_today' => (float) Payment::whereDate('payment_date', $today)->sum('amount'), // Ensure float
+            'online_staff' => \App\Models\User::where('last_login_at', '>=', now()->subHours(1))->count(),
+        ];
+
+        // 2. Weekly Revenue Analysis (Last 7 Days)
+        $revenueAnalysis = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $dayName = $date->format('D');
+            $amount = Payment::whereDate('payment_date', $date->toDateString())->sum('amount');
+            $patientCount = \App\Models\PatientVisit::whereDate('visit_date', $date->toDateString())->count();
+            
+            $revenueAnalysis[] = [
+                'name' => $dayName,
+                'revenue' => (float)$amount,
+                'patients' => $patientCount
+            ];
+        }
+
+        // 3. Recent Activity (Latest 5 Visits)
+        $recentActivity = \App\Models\PatientVisit::with('patient')
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(function($visit) {
+                return [
+                    'name' => $visit->patient->first_name . ' ' . $visit->patient->last_name,
+                    'time' => $visit->visit_date->format('h:i A'),
+                    'type' => strtoupper($visit->visit_type),
+                    'status' => $visit->status,
+                    'color' => $this->getActivityColor($visit->visit_type)
+                ];
+            });
+
         return response()->json([
-            'patients_total' => Patient::count(),
-            'visits_today' => \App\Models\PatientVisit::whereDate('visit_date', now()->toDateString())->count(),
-            'revenue_today' => Payment::whereDate('payment_date', now()->toDateString())->sum('amount'),
-            'pending_lab' => TestRequest::where('status', 'pending')->count(),
-            'low_stock_drugs' => \App\Models\Drug::all()->filter(function($d) {
-                return $d->totalStock() <= $d->reorder_level;
-            })->count()
+            'success' => true,
+            'data' => array_merge($stats, [
+                'revenue_analysis' => $revenueAnalysis,
+                'recent_activity' => $recentActivity
+            ])
         ]);
+    }
+
+    private function getActivityColor($type)
+    {
+        return match (strtolower($type)) {
+            'opd' => 'bg-blue-500',
+            'ipd' => 'bg-emerald-500',
+            'emergency' => 'bg-red-500',
+            default => 'bg-slate-500',
+        };
     }
 
     public function exportInvoice($id)

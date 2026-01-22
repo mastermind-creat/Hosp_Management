@@ -18,18 +18,14 @@ class AdminUserSeeder extends Seeder
         // 1. Create or get Admin Role
         $adminRole = Role::where('name', 'admin')->first();
 
-        // 2. Assign all permissions to Admin Role
-        $allPermissions = Permission::all();
-        $adminRole->permissions()->sync($allPermissions->pluck('id'));
-
-        // 3. Create Default Admin User
+        // 2. Create Default Admin User
         $adminUser = User::firstOrCreate(
             ['username' => 'admin'],
             [
                 'name' => 'System Administrator',
                 'email' => 'admin@hospmanager.com',
                 'password' => Hash::make('Admin@2026'),
-                'employee_id' => 'EMP001',
+                'employee_id' => 'EMP-2026-001',
                 'is_active' => true,
             ]
         );

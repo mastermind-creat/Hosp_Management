@@ -24,6 +24,10 @@ class ClinicalController extends Controller
     {
         $visit = PatientVisit::findOrFail($visitId);
         
+        if ($visit->status === 'completed') {
+            return response()->json(['error' => 'Completed encounters are read-only'], 403);
+        }
+        
         $validated = $request->validate([
             'diagnosis' => 'required|string',
             'treatment_plan' => 'nullable|string',
@@ -40,6 +44,10 @@ class ClinicalController extends Controller
     public function storeTreatmentNote(Request $request, $visitId)
     {
         $visit = PatientVisit::findOrFail($visitId);
+
+        if ($visit->status === 'completed') {
+            return response()->json(['error' => 'Completed encounters are read-only'], 403);
+        }
 
         $validated = $request->validate([
             'note' => 'required|string',
@@ -59,6 +67,10 @@ class ClinicalController extends Controller
     public function storePrescription(Request $request, $visitId)
     {
         $visit = PatientVisit::findOrFail($visitId);
+
+        if ($visit->status === 'completed') {
+            return response()->json(['error' => 'Completed encounters are read-only'], 403);
+        }
 
         $validated = $request->validate([
             'notes' => 'nullable|string',
@@ -96,6 +108,10 @@ class ClinicalController extends Controller
     {
         $visit = PatientVisit::findOrFail($visitId);
         
+        if ($visit->status === 'completed') {
+            return response()->json(['error' => 'Completed encounters are read-only'], 403);
+        }
+
         // Check if already admitted
         if ($visit->patient->visits()->whereHas('ipdAdmission', function($q) {
             $q->where('status', 'admitted');
@@ -152,6 +168,10 @@ class ClinicalController extends Controller
     public function storeVitals(Request $request, $visitId)
     {
         $visit = PatientVisit::findOrFail($visitId);
+
+        if ($visit->status === 'completed') {
+            return response()->json(['error' => 'Completed encounters are read-only'], 403);
+        }
 
         $validated = $request->validate([
             'temperature' => 'nullable|numeric',

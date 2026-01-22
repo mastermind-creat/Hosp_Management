@@ -7,6 +7,7 @@ import App from './App'
 import { store, persistor } from './store'
 import offlineService from './services/offlineService'
 import './index.css'
+import './i18n'
 
 // Initialize offline service
 offlineService.init(store)

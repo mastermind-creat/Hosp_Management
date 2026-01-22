@@ -12,7 +12,13 @@ class SettingsController extends Controller
      */
     public function index()
     {
-        $settings = DB::table('settings')->get()->groupBy('group');
+        $settings = DB::table('settings')->get()->map(function($item) {
+            if (isset($item->options) && $item->options) {
+                $item->options = json_decode($item->options);
+            }
+            return $item;
+        })->groupBy('group');
+        
         return response()->json($settings);
     }
 
@@ -58,10 +64,28 @@ class SettingsController extends Controller
      */
     public function publicConfig()
     {
-        $keys = ['hospital_name', 'contact_email', 'currency_symbol'];
+        $keys = [
+            'hospital_name', 
+            'contact_email', 
+            'currency_symbol',
+            'hospital_address',
+            'hospital_phone',
+            'hospital_website',
+            'system_language',
+            'timezone'
+        ];
+        
         $settings = DB::table('settings')
             ->whereIn('key', $keys)
-            ->pluck('value', 'key');
+            ->get(['key', 'value', 'type', 'options'])
+            ->keyBy('key')
+            ->map(function($item) {
+                return [
+                    'value' => $item->value,
+                    'type' => $item->type,
+                    'options' => $item->options ? json_decode($item->options) : null
+                ];
+            });
             
         return response()->json($settings);
     }

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
+import { useSelector } from 'react-redux'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import {
     Users,
     Calendar,
@@ -30,15 +32,7 @@ import api from '../../services/api'
 import { formatKES } from '../../utils/format'
 import SyncStatus from '../../components/dashboard/SyncStatus'
 
-const data = [
-    { name: 'Mon', patients: 40, revenue: 240000 },
-    { name: 'Tue', patients: 30, revenue: 139800 },
-    { name: 'Wed', patients: 45, revenue: 380000 },
-    { name: 'Thu', patients: 35, revenue: 390800 },
-    { name: 'Fri', patients: 55, revenue: 480000 },
-    { name: 'Sat', patients: 20, revenue: 280000 },
-    { name: 'Sun', patients: 15, revenue: 110000 },
-]
+// Chart data placeholder moved to conditional logic
 
 const StatCard = ({ title, value, change, icon: Icon, trend }) => (
     <motion.div
@@ -65,6 +59,8 @@ const StatCard = ({ title, value, change, icon: Icon, trend }) => (
 )
 
 const Dashboard = () => {
+    const { t } = useTranslation()
+    const { user } = useSelector((state) => state.auth)
     const [stats, setStats] = useState(null)
     const [loading, setLoading] = useState(true)
 
@@ -87,8 +83,8 @@ const Dashboard = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Dashboard Overview</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Monitor hospital performance and patient metrics.</p>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('dashboard.hospital_performance')}</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">{t('dashboard.welcome')} {user?.name || 'Medical Officer'}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button className="flex items-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-200 dark:shadow-none">
@@ -107,21 +103,21 @@ const Dashboard = () => {
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
-                    title="Total Patients"
+                    title={t('dashboard.total_patients')}
                     value={stats?.total_patients || '1,284'}
                     change="+12.5%"
                     icon={Users}
                     trend="up"
                 />
                 <StatCard
-                    title="Active Appointments"
+                    title={t('dashboard.active_appointments')}
                     value={stats?.active_appointments || '42'}
                     change="+8.1%"
                     icon={Calendar}
                     trend="up"
                 />
                 <StatCard
-                    title="Revenue Today"
+                    title={t('dashboard.revenue_today')}
                     value={formatKES(stats?.revenue_today || 2450.00)}
                     change="-3.2%"
                     icon={CreditCard}
@@ -141,7 +137,7 @@ const Dashboard = () => {
                 <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Revenue Analysis</h3>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">{t('dashboard.revenue_analysis')}</h3>
                             <p className="text-sm text-slate-500 dark:text-slate-400">Monthly hospital income overview</p>
                         </div>
                         <select className="bg-slate-50 dark:bg-slate-900 border-none rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 focus:ring-0">
@@ -151,7 +147,7 @@ const Dashboard = () => {
                     </div>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={data}>
+                            <AreaChart data={stats?.revenue_analysis || []}>
                                 <defs>
                                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1} />
@@ -195,31 +191,33 @@ const Dashboard = () => {
 
                 {/* Patient Activity */}
                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col">
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Patient Admission</h3>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">{t('dashboard.recent_activity')}</h3>
                     <div className="flex-1 space-y-5">
-                        {[
-                            { name: 'John Doe', time: '10:30 AM', type: 'Checkup', color: 'bg-blue-500' },
-                            { name: 'Sarah Wilson', time: '11:15 AM', type: 'Laboratory', color: 'bg-amber-500' },
-                            { name: 'David Smith', time: '12:00 PM', type: 'Emergency', color: 'bg-red-500' },
-                            { name: 'Emma Brown', time: '01:30 PM', type: 'Follow-up', color: 'bg-emerald-500' },
-                        ].map((item, idx) => (
-                            <div key={idx} className="flex items-center justify-between group cursor-pointer">
-                                <div className="flex items-center">
-                                    <div className={`w-2.5 h-2.5 rounded-full ${item.color} mr-4`}></div>
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-800 dark:text-white group-hover:text-indigo-600 transition-colors">
-                                            {item.name}
+                        {stats?.recent_activity?.length > 0 ? (
+                            stats.recent_activity.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between group cursor-pointer">
+                                    <div className="flex items-center">
+                                        <div className={`w-2.5 h-2.5 rounded-full ${item.color} mr-4`}></div>
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-800 dark:text-white group-hover:text-indigo-600 transition-colors">
+                                                {item.name}
+                                            </p>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{item.type} • {item.status}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center">
+                                            <Clock className="w-3 h-3 mr-1" /> {item.time}
                                         </p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{item.type}</p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 flex items-center">
-                                        <Clock className="w-3 h-3 mr-1" /> {item.time}
-                                    </p>
-                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-8">
+                                <Activity className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                                <p className="text-sm text-slate-500">No recent activity found</p>
                             </div>
-                        ))}
+                        )}
                     </div>
                     <button className="mt-8 w-full py-2.5 text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all">
                         View All Activity

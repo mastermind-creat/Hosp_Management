@@ -17,10 +17,27 @@ class DepartmentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|unique:departments,name|max:255',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'is_active' => 'boolean'
         ]);
+
+        // Check if a trashed department with the same name exists
+        $existing = \App\Models\Department::withTrashed()->where('name', $validated['name'])->first();
+        
+        if ($existing) {
+            if ($existing->trashed()) {
+                $existing->restore();
+                $existing->update($validated);
+                return response()->json($existing, 200);
+            } else {
+                // If not trashed, manually trigger unique validation error
+                return response()->json([
+                    'message' => 'The name has already been taken.',
+                    'errors' => ['name' => ['The name has already been taken.']]
+                ], 422);
+            }
+        }
 
         $department = \App\Models\Department::create($validated);
         return response()->json($department, 201);

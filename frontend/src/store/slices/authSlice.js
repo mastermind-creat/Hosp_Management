@@ -50,6 +50,7 @@ export const getCurrentUser = createAsyncThunk(
 
 const initialState = {
     user: null,
+    permissions: [], // Added permissions to state
     token: localStorage.getItem('token') || null,
     isAuthenticated: !!localStorage.getItem('token'),
     loading: false,
@@ -64,7 +65,8 @@ const authSlice = createSlice({
             state.error = null
         },
         setUser: (state, action) => {
-            state.user = action.payload
+            state.user = action.payload.user
+            state.permissions = action.payload.permissions || []
             state.isAuthenticated = true
         },
     },
@@ -80,6 +82,14 @@ const authSlice = createSlice({
                 state.isAuthenticated = true
                 state.token = action.payload.token
                 state.user = action.payload.user
+                // Extract permissions from the payload (AuthController logic)
+                state.permissions = action.payload.user?.roles?.flatMap(role => role.permissions.map(p => p.name)) || []
+
+                // Fallback: If backend sends permissions separately (which it does now)
+                if (action.payload.permissions) {
+                    state.permissions = action.payload.permissions
+                }
+
                 state.error = null
             })
             .addCase(login.rejected, (state, action) => {
@@ -88,10 +98,12 @@ const authSlice = createSlice({
                 state.isAuthenticated = false
                 state.token = null
                 state.user = null
+                state.permissions = []
             })
             // Logout
             .addCase(logout.fulfilled, (state) => {
                 state.user = null
+                state.permissions = []
                 state.token = null
                 state.isAuthenticated = false
                 state.error = null
@@ -102,7 +114,8 @@ const authSlice = createSlice({
             })
             .addCase(getCurrentUser.fulfilled, (state, action) => {
                 state.loading = false
-                state.user = action.payload
+                state.user = action.payload.user
+                state.permissions = action.payload.permissions || []
                 state.isAuthenticated = true
             })
             .addCase(getCurrentUser.rejected, (state) => {
@@ -110,6 +123,7 @@ const authSlice = createSlice({
                 state.isAuthenticated = false
                 state.token = null
                 state.user = null
+                state.permissions = []
                 localStorage.removeItem('token')
             })
     },

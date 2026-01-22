@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Users, UserPlus, Search,
     Briefcase, Building2, Shield, MoreVertical,
-    Filter, Download, ChevronRight
+    Filter, Download, ChevronRight, UserCheck, UserX, Trash2, Edit2
 } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 
 const StaffList = () => {
     const [staff, setStaff] = useState([]);
+    const [departments, setDepartments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterDept, setFilterDept] = useState('all');
@@ -21,8 +22,12 @@ const StaffList = () => {
     const fetchStaff = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/staff');
-            setStaff(response.data);
+            const [staffRes, deptsRes] = await Promise.all([
+                api.get('/staff'),
+                api.get('/departments')
+            ]);
+            setStaff(staffRes.data);
+            setDepartments(deptsRes.data);
         } catch (error) {
             toast.error('Failed to load staff records');
         } finally {
@@ -43,11 +48,35 @@ const StaffList = () => {
         );
     };
 
-    const filteredStaff = staff.filter(s =>
-        (s.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.employee_id.toLowerCase().includes(searchTerm.toLowerCase())) &&
-        (filterDept === 'all' || s.department_id === filterDept)
-    );
+    const handleToggleStatus = async (s) => {
+        const newStatus = s.employment_status === 'active' ? 'suspended' : 'active';
+        try {
+            await api.put(`/staff/${s.id}`, { employment_status: newStatus });
+            toast.success(`Staff status updated to ${newStatus}`);
+            fetchStaff();
+        } catch (error) {
+            toast.error('Failed to update staff status');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this staff record? This will also deactivate the user account.')) return;
+        try {
+            await api.delete(`/staff/${id}`);
+            toast.success('Staff record deleted successfully');
+            fetchStaff();
+        } catch (error) {
+            toast.error('Failed to delete staff record');
+        }
+    };
+
+    const filteredStaff = staff.filter(s => {
+        const matchesSearch = s.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.employee_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.user.email.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesDept = filterDept === 'all' || s.department_id === parseInt(filterDept);
+        return matchesSearch && matchesDept;
+    });
 
     return (
         <div className="space-y-6">
@@ -63,6 +92,9 @@ const StaffList = () => {
                     <button className="inline-flex items-center px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-colors">
                         <Download className="w-4 h-4 mr-2" /> Export
                     </button>
+                    <Link to="/staff/structure" className="inline-flex items-center px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 rounded-xl text-sm font-semibold hover:bg-indigo-50 transition-colors">
+                        <Building2 className="w-4 h-4 mr-2" /> Configure Structure
+                    </Link>
                     <Link to="/staff/new" className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-indigo-200 dark:shadow-none">
                         <UserPlus className="w-4 h-4 mr-2" /> Register Staff
                     </Link>
@@ -82,8 +114,15 @@ const StaffList = () => {
                         />
                     </div>
                     <div className="flex gap-2">
-                        <select className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <select
+                            value={filterDept}
+                            onChange={(e) => setFilterDept(e.target.value)}
+                            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                        >
                             <option value="all">All Departments</option>
+                            {departments.map(dept => (
+                                <option key={dept.id} value={dept.id}>{dept.name}</option>
+                            ))}
                         </select>
                         <select className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                             <option value="all">Status: Active</option>
@@ -99,7 +138,8 @@ const StaffList = () => {
                             <tr className="bg-slate-50 dark:bg-slate-800/50">
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Employee</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Department</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Role</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Designation</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">System Role</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Joined</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
                             </tr>
@@ -108,7 +148,7 @@ const StaffList = () => {
                             {loading ? (
                                 Array(5).fill(0).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
-                                        <td colSpan="5" className="px-6 py-4 h-16 bg-slate-50/50 dark:bg-slate-800/20"></td>
+                                        <td colSpan="6" className="px-6 py-4 h-16 bg-slate-50/50 dark:bg-slate-800/20"></td>
                                     </tr>
                                 ))
                             ) : filteredStaff.length > 0 ? (
@@ -135,21 +175,46 @@ const StaffList = () => {
                                             <div className="flex items-center gap-2">
                                                 <Briefcase className="w-4 h-4 text-slate-400" />
                                                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                                    {s.designation?.name || 'Staff Member'}
+                                                    {s.designation?.name || 'Not Set'}
                                                 </span>
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {s.user?.roles?.[0] ? (
+                                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
+                                                    <Shield className="w-3 h-3 mr-1" />
+                                                    {s.user.roles[0].display_name}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-slate-400">No Role</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <p className="text-sm text-slate-500">{new Date(s.date_joined).toLocaleDateString()}</p>
                                             {getStatusBadge(s.employment_status)}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Link to={`/staff/${s.id}`} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                                                    <ChevronRight className="w-5 h-5" />
+                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => handleToggleStatus(s)}
+                                                    className={`p-2 rounded-lg transition-colors ${s.employment_status === 'active' ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'}`}
+                                                    title={s.employment_status === 'active' ? 'Suspend Account' : 'Activate Account'}
+                                                >
+                                                    {s.employment_status === 'active' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                                                </button>
+                                                <Link
+                                                    to={`/staff/edit/${s.id}`}
+                                                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                    title="Edit Staff"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
                                                 </Link>
-                                                <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                                                    <MoreVertical className="w-5 h-5" />
+                                                <button
+                                                    onClick={() => handleDelete(s.id)}
+                                                    className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                                    title="Delete Staff"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         </td>
@@ -157,7 +222,7 @@ const StaffList = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-12 text-center text-slate-500 italic">
+                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500 italic">
                                         No staff records found.
                                     </td>
                                 </tr>

@@ -33,7 +33,16 @@ class PharmacyController extends Controller
             });
         }
 
-        return $query->with('batches')->paginate($request->get('limit', 15));
+        return $query->with('batches')->latest()->paginate($request->get('limit', 15));
+    }
+
+    public function showDrug($id)
+    {
+        $drug = Drug::with(['batches' => function($q) {
+            $q->orderBy('expiry_date', 'asc');
+        }])->findOrFail($id);
+        
+        return response()->json($drug);
     }
 
     public function storeDrug(Request $request)
@@ -50,6 +59,38 @@ class PharmacyController extends Controller
 
         $drug = Drug::create($validated);
         return response()->json($drug, 201);
+    }
+
+    public function updateDrug(Request $request, $id)
+    {
+        $drug = Drug::findOrFail($id);
+        
+        $validated = $request->validate([
+            'generic_name' => 'string|max:255',
+            'brand_name' => 'nullable|string|max:255',
+            'strength' => 'nullable|string',
+            'form' => 'nullable|string',
+            'category' => 'nullable|string',
+            'unit_price' => 'numeric|min:0',
+            'reorder_level' => 'nullable|integer',
+            'is_active' => 'boolean',
+        ]);
+
+        $drug->update($validated);
+        return response()->json($drug);
+    }
+
+    public function destroyDrug($id)
+    {
+        $drug = Drug::findOrFail($id);
+        
+        // Check if drug has dispensers or stock
+        if ($drug->totalStock() > 0) {
+            return response()->json(['error' => 'Cannot delete drug with remaining stock'], 422);
+        }
+
+        $drug->delete();
+        return response()->json(['message' => 'Drug deleted successfully']);
     }
 
     public function addStock(Request $request, $drugId)
@@ -70,7 +111,7 @@ class PharmacyController extends Controller
     {
         $validated = $request->validate([
             'patient_id' => 'required|exists:patients,id',
-            'prescription_id' => 'nullable|exists:prescriptions,id',
+            'prescription_id' => 'required|exists:prescriptions,id',
             'drug_id' => 'required|exists:drugs,id',
             'quantity' => 'required|integer|min:1',
             'invoice_id' => 'nullable|exists:invoices,id',
@@ -91,6 +132,52 @@ class PharmacyController extends Controller
 
     public function suppliers()
     {
-        return response()->json(Supplier::where('is_active', true)->get());
+        return response()->json(Supplier::latest()->get());
+    }
+
+    public function storeSupplier(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'contact_person' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string',
+        ]);
+
+        $supplier = Supplier::create($validated);
+        return response()->json($supplier, 201);
+    }
+
+    public function updateSupplier(Request $request, $id)
+    {
+        $supplier = Supplier::findOrFail($id);
+        
+        $validated = $request->validate([
+            'name' => 'string|max:255',
+            'contact_person' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string',
+            'is_active' => 'boolean',
+        ]);
+
+        $supplier->update($validated);
+        return response()->json($supplier);
+    }
+
+    public function destroySupplier($id)
+    {
+        $supplier = Supplier::findOrFail($id);
+        
+        // Check if supplier has batches
+        if ($supplier->batches()->count() > 0) {
+            // Just deactivate instead of delete if they have history
+            $supplier->update(['is_active' => false]);
+            return response()->json(['message' => 'Supplier deactivated as they have associated stock records']);
+        }
+
+        $supplier->delete();
+        return response()->json(['message' => 'Supplier deleted successfully']);
     }
 }

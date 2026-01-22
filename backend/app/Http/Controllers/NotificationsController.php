@@ -20,9 +20,15 @@ class NotificationsController extends Controller
         
         // Calculate total critical counts
         $total = 0;
-        if ($alerts['stock'] > 0) $total++; // Treat category as 1 notification
-        if ($alerts['lab'] > 0) $total++;
-        if ($alerts['backup']['status'] !== 'ok') $total++;
+        foreach (['stock', 'lab', 'clinical', 'pharmacy', 'billing'] as $key) {
+            if (isset($alerts[$key]) && $alerts[$key] > 0) {
+                $total += $alerts[$key];
+            }
+        }
+        
+        if (isset($alerts['backup']['status']) && $alerts['backup']['status'] !== 'ok') {
+            $total++;
+        }
 
         $alerts['counts'] = $total;
 

@@ -11,7 +11,7 @@ class StaffController extends Controller
      */
     public function index()
     {
-        return \App\Models\StaffProfile::with(['user', 'department', 'designation'])->get();
+        return \App\Models\StaffProfile::with(['user.roles', 'department', 'designation'])->get();
     }
 
     public function store(Request $request)
@@ -22,15 +22,42 @@ class StaffController extends Controller
             'role_id' => 'required|exists:roles,id',
             'department_id' => 'required|exists:departments,id',
             'designation_id' => 'required|exists:designations,id',
-            'employee_id' => 'required|string|unique:staff_profiles,employee_id',
+            'employee_id' => 'nullable|string|unique:staff_profiles,employee_id',
             'date_joined' => 'nullable|date',
             'password' => 'required|min:8'
         ]);
 
         return \DB::transaction(function () use ($validated) {
+            // Auto-generate username from email
+            $username = explode('@', $validated['email'])[0];
+            $baseUsername = $username;
+            $counter = 1;
+            while (\App\Models\User::where('username', $username)->exists()) {
+                $username = $baseUsername . $counter;
+                $counter++;
+            }
+
+            // Auto-generate employee_id if not provided
+            if (empty($validated['employee_id'])) {
+                $year = date('Y');
+                $lastEmployee = \App\Models\User::where('employee_id', 'like', "EMP-{$year}-%")
+                    ->orderBy('employee_id', 'desc')
+                    ->first();
+                
+                if ($lastEmployee && preg_match('/EMP-\d{4}-(\d+)/', $lastEmployee->employee_id, $matches)) {
+                    $nextNumber = intval($matches[1]) + 1;
+                } else {
+                    $nextNumber = 1;
+                }
+                
+                $validated['employee_id'] = sprintf('EMP-%s-%03d', $year, $nextNumber);
+            }
+
             $user = \App\Models\User::create([
                 'name' => $validated['name'],
+                'username' => $username,
                 'email' => $validated['email'],
+                'employee_id' => $validated['employee_id'],
                 'password' => \Hash::make($validated['password']),
                 'is_active' => true
             ]);
@@ -56,9 +83,13 @@ class StaffController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $staff = \App\Models\StaffProfile::findOrFail($id);
+        $staff = \App\Models\StaffProfile::with('user')->findOrFail($id);
         
         $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|unique:users,email,' . $staff->user_id,
+            'password' => 'sometimes|nullable|min:8',
+            'role_id' => 'sometimes|required|exists:roles,id',
             'department_id' => 'sometimes|required|exists:departments,id',
             'designation_id' => 'sometimes|required|exists:designations,id',
             'employment_status' => 'sometimes|required|in:active,suspended,exited',
@@ -66,8 +97,27 @@ class StaffController extends Controller
             'qualification' => 'nullable|string'
         ]);
 
-        $staff->update($validated);
-        return response()->json($staff->load(['user', 'department', 'designation']));
+        return \DB::transaction(function () use ($staff, $validated) {
+            // Update User
+            $userData = [];
+            if (isset($validated['name'])) $userData['name'] = $validated['name'];
+            if (isset($validated['email'])) $userData['email'] = $validated['email'];
+            if (!empty($validated['password'])) $userData['password'] = \Hash::make($validated['password']);
+            
+            if (!empty($userData)) {
+                $staff->user->update($userData);
+            }
+
+            // Update Role
+            if (isset($validated['role_id'])) {
+                $staff->user->roles()->sync([$validated['role_id']]);
+            }
+
+            // Update Staff Profile
+            $staff->update($validated);
+            
+            return response()->json($staff->load(['user', 'department', 'designation']));
+        });
     }
 
     public function destroy(string $id)

@@ -31,20 +31,49 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'username' => 'required|string|unique:users',
+            'username' => 'nullable|string|unique:users',
             'email' => 'required|email|unique:users',
             'phone' => 'nullable|string',
-            'employee_id' => 'required|string|unique:users',
+            'employee_id' => 'nullable|string|unique:users',
             'password' => 'required|string|min:8',
             'roles' => 'required|array',
             'roles.*' => 'exists:roles,id',
         ]);
 
+        // Auto-generate username from email if not provided
+        if (empty($validated['username'])) {
+            $validated['username'] = explode('@', $validated['email'])[0];
+            
+            // Ensure uniqueness by appending number if needed
+            $baseUsername = $validated['username'];
+            $counter = 1;
+            while (User::where('username', $validated['username'])->exists()) {
+                $validated['username'] = $baseUsername . $counter;
+                $counter++;
+            }
+        }
+
+        // Auto-generate employee_id if not provided
+        if (empty($validated['employee_id'])) {
+            $year = date('Y');
+            $lastEmployee = User::where('employee_id', 'like', "EMP-{$year}-%")
+                ->orderBy('employee_id', 'desc')
+                ->first();
+            
+            if ($lastEmployee && preg_match('/EMP-\d{4}-(\d+)/', $lastEmployee->employee_id, $matches)) {
+                $nextNumber = intval($matches[1]) + 1;
+            } else {
+                $nextNumber = 1;
+            }
+            
+            $validated['employee_id'] = sprintf('EMP-%s-%03d', $year, $nextNumber);
+        }
+
         $user = User::create([
             'name' => $validated['name'],
             'username' => $validated['username'],
             'email' => $validated['email'],
-            'phone' => $validated['phone'],
+            'phone' => $validated['phone'] ?? null,
             'employee_id' => $validated['employee_id'],
             'password' => Hash::make($validated['password']),
             'is_active' => true,

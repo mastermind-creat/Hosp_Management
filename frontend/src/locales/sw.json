@@ -1,0 +1,34 @@
+{
+    "common": {
+        "dashboard": "Dashibodi",
+        "patients": "Wagonjwa",
+        "appointments": "Miadi",
+        "clinical": "Kliniki",
+        "billing": "Malipo",
+        "pharmacy": "Duka la Dawa",
+        "laboratory": "Maabara",
+        "staff_hr": "Wafanyakazi & HR",
+        "hospital_structure": "Muundo wa Hospitali",
+        "insurance": "Bima",
+        "reports": "Ripoti",
+        "audit_trail": "Kumbukumbu",
+        "system_tools": "Vifaa vya Mfumo",
+        "clinical_templates": "Kiolezo cha Kliniki",
+        "system_logs": "Logi za Mfumo",
+        "settings": "Mipangilio",
+        "sign_out": "Ondoka",
+        "search_placeholder": "Tafuta wagonjwa, fomu, vipimo...",
+        "online": "Imeunganishwa",
+        "offline": "Hali ya Nje ya Mtandao"
+    },
+    "dashboard": {
+        "welcome": "Karibu tena,",
+        "total_patients": "Jumla ya Wagonjwa",
+        "active_appointments": "Miadi Inayoendelea",
+        "revenue_today": "Mapato ya Leo",
+        "performance_overview": "Muhtasari wa Utendaji",
+        "revenue_analysis": "Uchambuzi wa Mapato",
+        "recent_activity": "Shughuli za Hivi Karibuni",
+        "hospital_performance": "Utendaji wa Hospitali"
+    }
+}

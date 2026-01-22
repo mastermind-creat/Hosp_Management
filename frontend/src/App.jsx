@@ -3,6 +3,8 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { Toaster } from 'react-hot-toast'
 import { getCurrentUser } from './store/slices/authSlice'
+import { useTranslation } from 'react-i18next'
+import api from './services/api'
 
 // Layouts
 import MainLayout from './components/layout/MainLayout'
@@ -66,6 +68,7 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
     const dispatch = useDispatch()
+    const { t, i18n } = useTranslation()
     const { isAuthenticated, user } = useSelector((state) => state.auth)
     const { theme } = useSelector((state) => state.ui)
 
@@ -84,6 +87,23 @@ function App() {
             dispatch(getCurrentUser())
         }
     }, [isAuthenticated, user, dispatch])
+
+    useEffect(() => {
+        const initSystemSettings = async () => {
+            try {
+                const response = await api.get('/settings/public-config');
+                const config = response.data;
+
+                // Set language if not already set by user
+                if (config.system_language?.value && !localStorage.getItem('i18nextLng')) {
+                    i18n.changeLanguage(config.system_language.value);
+                }
+            } catch (error) {
+                console.error('Failed to load system config', error);
+            }
+        };
+        initSystemSettings();
+    }, [i18n]);
 
     return (
         <>
@@ -130,6 +150,7 @@ function App() {
                     {/* Staff & HR Routes */}
                     <Route path="/staff" element={<StaffList />} />
                     <Route path="/staff/new" element={<StaffForm />} />
+                    <Route path="/staff/edit/:id" element={<StaffForm />} />
                     <Route path="/staff/structure" element={<DepartmentSetup />} />
 
                     {/* Appointment Routes */}

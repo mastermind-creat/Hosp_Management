@@ -74,10 +74,18 @@ Route::group([
     // Pharmacy Management
     Route::get('drugs', [\App\Http\Controllers\PharmacyController::class, 'index'])->middleware('rbac:view_drugs');
     Route::post('drugs', [\App\Http\Controllers\PharmacyController::class, 'storeDrug'])->middleware('rbac:manage_drugs');
+    Route::get('drugs/{id}', [\App\Http\Controllers\PharmacyController::class, 'showDrug'])->middleware('rbac:view_drugs');
+    Route::put('drugs/{id}', [\App\Http\Controllers\PharmacyController::class, 'updateDrug'])->middleware('rbac:manage_drugs');
+    Route::delete('drugs/{id}', [\App\Http\Controllers\PharmacyController::class, 'destroyDrug'])->middleware('rbac:manage_drugs');
     Route::post('drugs/{id}/stock', [\App\Http\Controllers\PharmacyController::class, 'addStock'])->middleware('rbac:manage_stock');
+    
     Route::post('pharmacy/dispense', [\App\Http\Controllers\PharmacyController::class, 'dispense'])->middleware('rbac:dispense_drugs');
     Route::get('pharmacy/alerts', [\App\Http\Controllers\PharmacyController::class, 'stockAlerts'])->middleware('rbac:view_drugs');
+    
     Route::get('pharmacy/suppliers', [\App\Http\Controllers\PharmacyController::class, 'suppliers'])->middleware('rbac:view_drugs');
+    Route::post('pharmacy/suppliers', [\App\Http\Controllers\PharmacyController::class, 'storeSupplier'])->middleware('rbac:manage_drugs');
+    Route::put('pharmacy/suppliers/{id}', [\App\Http\Controllers\PharmacyController::class, 'updateSupplier'])->middleware('rbac:manage_drugs');
+    Route::delete('pharmacy/suppliers/{id}', [\App\Http\Controllers\PharmacyController::class, 'destroySupplier'])->middleware('rbac:manage_drugs');
 
     // Laboratory Management
     Route::get('lab/tests', [\App\Http\Controllers\LabController::class, 'index'])->middleware('rbac:view_lab_requests');
@@ -90,7 +98,7 @@ Route::group([
 
     // Reports & Analytics
     Route::get('reports/revenue', [\App\Http\Controllers\ReportController::class, 'revenueReport'])->middleware('rbac:view_financial_reports');
-    Route::get('reports/dashboard-stats', [\App\Http\Controllers\ReportController::class, 'dashboardStats'])->middleware('rbac:view_reports');
+    Route::get('reports/dashboard', [\App\Http\Controllers\ReportController::class, 'dashboardStats'])->middleware('rbac:view_reports');
     Route::get('invoices/{id}/export', [\App\Http\Controllers\ReportController::class, 'exportInvoice'])->middleware('rbac:view_invoices');
     // Insurance Routes
     Route::get('/insurance/providers', [InsuranceProviderController::class, 'index']);

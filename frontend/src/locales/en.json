@@ -1,0 +1,34 @@
+{
+    "common": {
+        "dashboard": "Dashboard",
+        "patients": "Patients",
+        "appointments": "Appointments",
+        "clinical": "Clinical",
+        "billing": "Billing",
+        "pharmacy": "Pharmacy",
+        "laboratory": "Laboratory",
+        "staff_hr": "Staff & HR",
+        "hospital_structure": "Hospital Structure",
+        "insurance": "Insurance",
+        "reports": "Reports",
+        "audit_trail": "Audit Trail",
+        "system_tools": "System Tools",
+        "clinical_templates": "Clinical Templates",
+        "system_logs": "System Logs",
+        "settings": "Settings",
+        "sign_out": "Sign Out",
+        "search_placeholder": "Search patients, invoices, tests...",
+        "online": "Online",
+        "offline": "Offline Mode"
+    },
+    "dashboard": {
+        "welcome": "Welcome back,",
+        "total_patients": "Total Patients",
+        "active_appointments": "Active Appointments",
+        "revenue_today": "Revenue Today",
+        "performance_overview": "Performance Overview",
+        "revenue_analysis": "Revenue Analysis",
+        "recent_activity": "Recent Activity",
+        "hospital_performance": "Hospital Performance"
+    }
+}

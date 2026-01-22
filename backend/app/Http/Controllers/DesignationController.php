@@ -17,9 +17,25 @@ class DesignationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|unique:designations,name|max:255',
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string'
         ]);
+
+        // Check if a trashed designation with the same name exists
+        $existing = \App\Models\Designation::withTrashed()->where('name', $validated['name'])->first();
+        
+        if ($existing) {
+            if ($existing->trashed()) {
+                $existing->restore();
+                $existing->update($validated);
+                return response()->json($existing, 200);
+            } else {
+                return response()->json([
+                    'message' => 'The name has already been taken.',
+                    'errors' => ['name' => ['The name has already been taken.']]
+                ], 422);
+            }
+        }
 
         $designation = \App\Models\Designation::create($validated);
         return response()->json($designation, 201);

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
     User, Mail, Phone, Lock,
     Building2, Briefcase, Calendar,
-    CheckCircle, ArrowLeft, Save
+    CheckCircle, ArrowLeft, Save,
+    AlertCircle, Settings, Info
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -19,7 +20,7 @@ const StaffForm = () => {
         name: '',
         email: '',
         password: '',
-        employee_id: '',
+        employee_id: '', // Optional - will be auto-generated if empty
         department_id: '',
         designation_id: '',
         role_id: '',
@@ -27,9 +28,38 @@ const StaffForm = () => {
         employment_status: 'active'
     });
 
+    const { id } = useParams();
+    const isEdit = !!id;
+
     useEffect(() => {
         fetchMetadata();
-    }, []);
+        if (isEdit) {
+            fetchStaffData();
+        }
+    }, [id]);
+
+    const fetchStaffData = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get(`/staff/${id}`);
+            const s = response.data;
+            setFormData({
+                name: s.user.name,
+                email: s.user.email,
+                password: '', // Keep empty unless changing
+                employee_id: s.employee_id,
+                department_id: s.department_id,
+                designation_id: s.designation_id,
+                role_id: s.user.roles?.[0]?.id || '',
+                date_joined: s.date_joined ? s.date_joined.split('T')[0] : '',
+                employment_status: s.employment_status
+            });
+        } catch (error) {
+            toast.error('Failed to load staff details');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchMetadata = async () => {
         try {
@@ -50,11 +80,19 @@ const StaffForm = () => {
         e.preventDefault();
         try {
             setLoading(true);
-            await api.post('/staff', formData);
-            toast.success('Staff member registered successfully');
+            if (isEdit) {
+                // For update, password might be empty
+                const updateData = { ...formData };
+                if (!updateData.password) delete updateData.password;
+                await api.put(`/staff/${id}`, updateData);
+                toast.success('Staff member updated successfully');
+            } else {
+                await api.post('/staff', formData);
+                toast.success('Staff member registered successfully');
+            }
             navigate('/staff');
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to register staff');
+            toast.error(error.response?.data?.message || `Failed to ${isEdit ? 'update' : 'register'} staff`);
         } finally {
             setLoading(false);
         }
@@ -77,8 +115,12 @@ const StaffForm = () => {
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-8">
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Staff Registration</h1>
-                    <p className="text-slate-500 dark:text-slate-400">Complete the form below to add a new hospital employee.</p>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {isEdit ? 'Edit Staff Member' : 'Staff Registration'}
+                    </h1>
+                    <p className="text-slate-500 dark:text-slate-400">
+                        {isEdit ? 'Update the information for this staff member.' : 'Complete the form below to add a new hospital employee.'}
+                    </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-8">
@@ -106,21 +148,20 @@ const StaffForm = () => {
                                 required
                             />
                             <InputField
-                                label="Login Password"
+                                label={isEdit ? "Login Password (Leave blank to keep current)" : "Login Password"}
                                 name="password"
                                 type="password"
                                 value={formData.password}
                                 onChange={handleChange}
-                                placeholder="Minimum 8 characters"
-                                required
+                                placeholder={isEdit ? "••••••••" : "Minimum 8 characters"}
+                                required={!isEdit}
                             />
                             <InputField
-                                label="Employee ID"
+                                label="Employee ID (Optional)"
                                 name="employee_id"
                                 value={formData.employee_id}
                                 onChange={handleChange}
-                                placeholder="e.g. EMP-2026-001"
-                                required
+                                placeholder="Leave empty to auto-generate (e.g., EMP-2026-002)"
                             />
                         </div>
                     </section>
@@ -137,23 +178,29 @@ const StaffForm = () => {
                                 value={formData.department_id}
                                 onChange={handleChange}
                                 options={departments}
+                                setupLink="/staff/structure"
+                                setupLabel="Configure Departments"
                                 required
                             />
                             <SelectField
-                                label="Designation"
+                                label="Designation (Job Title)"
                                 name="designation_id"
                                 value={formData.designation_id}
                                 onChange={handleChange}
                                 options={designations}
+                                setupLink="/staff/structure"
+                                setupLabel="Configure Job Roles"
+                                tooltip="Official job title (e.g., Senior Nurse, Chief Pharmacist)"
                                 required
                             />
                             <SelectField
-                                label="System Role"
+                                label="System Role (Permissions)"
                                 name="role_id"
                                 value={formData.role_id}
                                 onChange={handleChange}
                                 options={roles}
                                 isRoles={true}
+                                tooltip="Controls system access and permissions (e.g., Doctor, Pharmacist)"
                                 required
                             />
                         </div>
@@ -211,12 +258,23 @@ const InputField = ({ label, ...props }) => (
     </div>
 );
 
-const SelectField = ({ label, options, isRoles, ...props }) => (
+const SelectField = ({ label, options, isRoles, setupLink, setupLabel, tooltip, ...props }) => (
     <div className="space-y-2">
-        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
+        <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+            {label}
+            {tooltip && (
+                <div className="group relative">
+                    <Info className="w-4 h-4 text-slate-400 cursor-help" />
+                    <div className="absolute left-0 top-6 hidden group-hover:block z-50 w-64 p-3 bg-slate-900 text-white text-xs rounded-lg shadow-xl">
+                        {tooltip}
+                        <div className="absolute -top-1 left-4 w-2 h-2 bg-slate-900 transform rotate-45"></div>
+                    </div>
+                </div>
+            )}
+        </label>
         <select
             {...props}
-            className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+            className={`w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 transition-all outline-none ${options.length === 0 ? 'border-amber-200 bg-amber-50/30' : ''}`}
         >
             <option value="">Select {label}</option>
             {options.map(opt => (
@@ -225,6 +283,14 @@ const SelectField = ({ label, options, isRoles, ...props }) => (
                 </option>
             ))}
         </select>
+        {options.length === 0 && setupLink && (
+            <Link
+                to={setupLink}
+                className="flex items-center text-[10px] font-bold text-amber-600 hover:text-amber-700 mt-1 uppercase"
+            >
+                <AlertCircle className="w-3 h-3 mr-1" /> {setupLabel} Required
+            </Link>
+        )}
     </div>
 );
 

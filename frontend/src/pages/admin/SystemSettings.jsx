@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Building, Wallet, Globe, Grip } from 'lucide-react';
+import { Save, Building, Wallet, Globe, Grip, Languages } from 'lucide-react';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 const SystemSettings = () => {
+    const { t, i18n } = useTranslation();
     const [settings, setSettings] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -43,11 +45,14 @@ const SystemSettings = () => {
             };
 
             await api.post('/settings', payload);
-            toast.success('Settings saved successfully');
-            // Reload window to apply global changes if any (like title)
-            if (confirm('Reload application to apply changes?')) {
-                window.location.reload();
+
+            // Check if language was changed
+            const langSetting = allSettings.find(s => s.key === 'system_language');
+            if (langSetting) {
+                i18n.changeLanguage(langSetting.value);
             }
+
+            toast.success('Settings saved successfully');
         } catch (error) {
             toast.error('Failed to save settings');
         } finally {
@@ -60,7 +65,7 @@ const SystemSettings = () => {
     const tabs = [
         { id: 'general', label: 'General Info', icon: Building },
         { id: 'finance', label: 'Finance & Tax', icon: Wallet },
-        { id: 'system', label: 'System', icon: Grip },
+        { id: 'system', label: 'System Settings', icon: Languages },
     ];
 
     return (
@@ -91,8 +96,8 @@ const SystemSettings = () => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`w-full flex items-center p-3 rounded-xl font-medium transition-all ${activeTab === tab.id
-                                    ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm border border-slate-200 dark:border-slate-700'
-                                    : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm border border-slate-200 dark:border-slate-700'
+                                : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50'
                                 }`}
                         >
                             <tab.icon className="w-5 h-5 mr-3" />
@@ -122,6 +127,16 @@ const SystemSettings = () => {
                                             onChange={(e) => handleChange(activeTab, setting.key, e.target.value)}
                                             className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
                                         />
+                                    ) : setting.type === 'select' ? (
+                                        <select
+                                            value={setting.value}
+                                            onChange={(e) => handleChange(activeTab, setting.key, e.target.value)}
+                                            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all font-medium"
+                                        >
+                                            {setting.options?.map(opt => (
+                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                            ))}
+                                        </select>
                                     ) : (
                                         <input
                                             type="text"

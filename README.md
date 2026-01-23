@@ -7,6 +7,9 @@
 
 Hospital Manager 2026 is an offline-first, enterprise-grade Windows desktop application for comprehensive hospital administration and financial accounting. The system operates fully without internet connectivity, with optional synchronization capabilities for multi-site deployments.
 
+> [!IMPORTANT]
+> For production installation and deployment, please follow the [Installation & Deployment Guide](docs/INSTALLATION_GUIDE.md).
+
 ## Technology Stack
 
 - **Frontend**: React 18+ with Tailwind CSS

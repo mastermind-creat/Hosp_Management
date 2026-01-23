@@ -46,6 +46,13 @@ class Patient extends Model
         'is_active' => 'boolean',
     ];
 
+    protected $appends = ['name'];
+
+    public function getNameAttribute()
+    {
+        return "{$this->first_name} {$this->last_name}";
+    }
+
     public function visits()
     {
         return $this->hasMany(PatientVisit::class);

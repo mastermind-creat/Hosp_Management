@@ -53,6 +53,7 @@ import BackupSettings from './pages/admin/BackupSettings'
 import SystemLogs from './pages/admin/SystemLogs'
 import SystemSettings from './pages/admin/SystemSettings'
 import ClinicalTemplates from './pages/admin/ClinicalTemplates'
+import HospitalConfigSettings from './pages/admin/HospitalConfigSettings'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -176,6 +177,7 @@ function App() {
                     <Route path="/admin/backups" element={<BackupSettings />} />
                     <Route path="/admin/system-logs" element={<SystemLogs />} />
                     <Route path="/admin/clinical-templates" element={<ClinicalTemplates />} />
+                    <Route path="/admin/hospital-config" element={<HospitalConfigSettings />} />
                     <Route path="/settings" element={<SystemSettings />} />
                     <Route path="/reports" element={<ReportsDashboard />} />
                 </Route>

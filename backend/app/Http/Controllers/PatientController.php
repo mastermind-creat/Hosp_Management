@@ -16,7 +16,8 @@ class PatientController extends Controller
     {
         $query = Patient::query();
 
-        if ($request->has('search')) {
+        // Search
+        if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
@@ -25,6 +26,28 @@ class PatientController extends Controller
                   ->orWhere('national_id', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%");
             });
+        }
+
+        // Filters
+        if ($request->filled('gender') && $request->gender !== 'all') {
+            $query->where('gender', $request->gender);
+        }
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $isActive = $request->status === 'active';
+            $query->where('is_active', $isActive);
+        }
+
+        // Sorting
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        
+        // whitelist sortable fields to prevent SQL injection
+        $allowedSorts = ['first_name', 'last_name', 'patient_number', 'created_at', 'date_of_birth'];
+        if (in_array($sortBy, $allowedSorts)) {
+            $query->orderBy($sortBy, $sortOrder);
+        } else {
+            $query->orderBy('created_at', 'desc');
         }
 
         return $query->paginate($request->get('limit', 15));
@@ -44,9 +67,11 @@ class PatientController extends Controller
             'address' => 'nullable|string',
             'city' => 'nullable|string',
             'county' => 'nullable|string',
+            'emergency_contact_name' => 'nullable|string',
+            'emergency_contact_phone' => 'nullable|string',
             'insurance_provider' => 'nullable|string',
             'insurance_number' => 'nullable|string',
-            'insurance_type' => 'required|in:nhif,private,corporate,none',
+            'insurance_type' => 'sometimes|in:nhif,shif,private,corporate,none',
         ]);
 
         $validated['patient_number'] = 'PAT-' . strtoupper(Str::random(8));
@@ -83,7 +108,7 @@ class PatientController extends Controller
             'county' => 'nullable|string',
             'insurance_provider' => 'nullable|string',
             'insurance_number' => 'nullable|string',
-            'insurance_type' => 'sometimes|in:nhif,private,corporate,none',
+            'insurance_type' => 'sometimes|in:nhif,shif,private,corporate,none',
             'emergency_contact_name' => 'nullable|string',
             'emergency_contact_phone' => 'nullable|string',
             'is_active' => 'sometimes|boolean',

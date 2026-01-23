@@ -74,6 +74,18 @@ export const fetchEncounterDetails = createAsyncThunk(
     }
 )
 
+export const completeVisit = createAsyncThunk(
+    'clinical/completeVisit',
+    async (visitId, { rejectWithValue }) => {
+        try {
+            const response = await api.post(`/queues/visits/${visitId}/complete`)
+            return response.data
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to complete visit')
+        }
+    }
+)
+
 export const fetchClinicalTemplates = createAsyncThunk(
     'clinical/fetchClinicalTemplates',
     async (params, { rejectWithValue }) => {

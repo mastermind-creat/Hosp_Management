@@ -1,0 +1,16 @@
+{
+    "name": "hospital-manager-2026",
+    "version": "1.0.0",
+    "description": "Hospital Manager 2026 - Master Project",
+    "private": true,
+    "scripts": {
+        "frontend:dev": "npm run dev --prefix frontend",
+        "frontend:build": "npm run build --prefix frontend",
+        "backend:dev": "cd backend && php artisan serve --port=8080",
+        "tauri:dev": ". \"$HOME/.cargo/env\"; npm run tauri --prefix frontend dev",
+        "tauri:build": ". \"$HOME/.cargo/env\"; npm run tauri --prefix frontend build",
+        "dev": "npm run frontend:dev",
+        "tauri": "npm run tauri --prefix frontend",
+        "start": "npm run backend:dev & npm run tauri:dev"
+    }
+}

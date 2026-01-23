@@ -33,6 +33,7 @@ import { logout } from '../../store/slices/authSlice'
 import { toggleTheme } from '../../store/slices/uiSlice'
 import api from '../../services/api'
 import NotificationsPanel from '../common/NotificationsPanel'
+import RoleSwitcher from '../RoleSwitcher'
 
 const MainLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -88,6 +89,7 @@ const MainLayout = () => {
         { name: t('common.audit_trail'), path: '/admin/audit', icon: Fingerprint, permission: 'view_audit_trail' },
         { name: t('common.system_tools'), path: '/admin/backups', icon: Database, permission: 'view_audit_trail' },
         { name: t('common.clinical_templates'), path: '/admin/clinical-templates', icon: ClipboardList, permission: 'manage_departments' },
+        { name: 'Hospital Config', path: '/admin/hospital-config', icon: Building2, permission: 'manage_roles' },
         { name: t('common.system_logs'), path: '/admin/system-logs', icon: ScrollText, permission: 'view_audit_trail' },
         { name: t('common.settings'), path: '/settings', icon: Settings },
     ]
@@ -222,6 +224,11 @@ const MainLayout = () => {
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
                             )}
                         </button>
+
+                        <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
+                        {/* Role Switcher */}
+                        <RoleSwitcher />
 
                         <div className="h-8 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
 

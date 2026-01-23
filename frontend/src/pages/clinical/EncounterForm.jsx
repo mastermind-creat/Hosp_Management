@@ -19,7 +19,8 @@ import {
     AlertCircle,
     Loader2,
     Zap,
-    ChevronDown
+    ChevronDown,
+    ArrowRightLeft
 } from 'lucide-react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -30,11 +31,13 @@ import {
     storeTreatmentNote,
     clearCurrentVisit,
     fetchEncounterDetails,
-    fetchClinicalTemplates
+    fetchClinicalTemplates,
+    completeVisit
 } from '../../store/slices/clinicalSlice'
 import { fetchPatientById } from '../../store/slices/patientSlice'
 import api from '../../services/api'
 import { toast } from 'react-hot-toast'
+import TransferModal from '../../components/clinical/TransferModal'
 
 const encounterSchema = z.object({
     vitals: z.object({
@@ -143,6 +146,7 @@ const EncounterForm = () => {
     const [activeTab, setActiveTab] = useState('vitals')
     const [saving, setSaving] = useState(false)
     const [visitId, setVisitId] = useState(encounterId || null)
+    const [isTransferOpen, setIsTransferOpen] = useState(false)
     const isEditMode = !!encounterId
 
     const { register, control, handleSubmit, formState: { errors }, trigger, watch, setValue } = useForm({
@@ -317,11 +321,27 @@ const EncounterForm = () => {
             }
 
             toast.success('Encounter completed successfully!')
-            navigate(`/patients/${patientId}`)
+            // No longer auto-navigate immediately to allow for transfer choice
+            // navigate(`/patients/${patientId}`)
+            return true
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to complete encounter')
+            return false
         } finally {
             setSaving(false)
+        }
+    }
+
+    const handleFinalizeAndNavigate = async () => {
+        const success = await finalizeEncounter()
+        if (success) {
+            try {
+                await dispatch(completeVisit(visitId)).unwrap()
+                navigate(`/patients/${patientId}`)
+            } catch (err) {
+                toast.error('Encounter saved but failed to complete queue session')
+                // Still navigate? Or stay? Probably stay if completion failed.
+            }
         }
     }
 
@@ -646,18 +666,43 @@ const EncounterForm = () => {
                             <div className="flex justify-end p-8 bg-slate-50 dark:bg-slate-900/30 border-t border-slate-100 dark:border-slate-700 rounded-b-3xl mt-6">
                                 <button
                                     type="button"
-                                    onClick={finalizeEncounter}
+                                    onClick={handleFinalizeAndNavigate}
                                     disabled={saving}
                                     className="flex items-center px-10 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-emerald-200 dark:shadow-none disabled:opacity-50"
                                 >
                                     {saving ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <CheckCircle2 className="w-5 h-5 mr-3" />}
-                                    Complete & Finalize Encounter
+                                    Finalize Encounter
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        const success = await finalizeEncounter()
+                                        if (success) setIsTransferOpen(true)
+                                    }}
+                                    disabled={saving}
+                                    className="flex items-center px-10 py-4 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-bold transition-all shadow-lg shadow-orange-200 dark:shadow-none disabled:opacity-50"
+                                >
+                                    {saving ? <Loader2 className="w-5 h-5 mr-3 animate-spin" /> : <ArrowRightLeft className="w-5 h-5 mr-3" />}
+                                    Finalize & Transfer
                                 </button>
                             </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
             </form>
+
+            {visitId && (
+                <TransferModal
+                    isOpen={isTransferOpen}
+                    onClose={() => {
+                        setIsTransferOpen(false)
+                        navigate(`/patients/${patientId}`)
+                    }}
+                    visitId={visitId}
+                    patientName={currentPatient ? `${currentPatient.first_name} ${currentPatient.last_name}` : 'Patient'}
+                    onTransferred={() => navigate(`/patients/${patientId}`)}
+                />
+            )}
 
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 p-4 rounded-2xl flex items-start">
                 <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mr-3 mt-0.5 flex-shrink-0" />

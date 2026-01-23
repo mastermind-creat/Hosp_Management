@@ -2,17 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     Activity, Search, Filter, Plus, User,
-    ChevronRight, Clock, MapPin, RefreshCw
+    ChevronRight, Clock, MapPin, RefreshCw, ArrowRightLeft
 } from 'lucide-react';
 import { fetchPatientVisits } from '../../store/slices/clinicalSlice';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { toast } from 'react-hot-toast';
+import TransferModal from '../../components/clinical/TransferModal';
 
 const ClinicalQueue = () => {
     const navigate = useNavigate();
-    const [visits, setVisits] = useState([]);
+    const [queueData, setQueueData] = useState({ waiting: [], active: [], department: null });
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [tab, setTab] = useState('waiting'); // 'waiting' or 'active'
+    const [isTransferOpen, setIsTransferOpen] = useState(false);
+    const [selectedVisit, setSelectedVisit] = useState(null);
 
     useEffect(() => {
         fetchQueue();
@@ -21,16 +26,30 @@ const ClinicalQueue = () => {
     const fetchQueue = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/clinical/visits?status=active');
-            setVisits(response.data.data);
+            const response = await api.get('/queues/my-queue');
+            setQueueData(response.data);
         } catch (error) {
             console.error('Failed to fetch clinical queue');
+            toast.error('Failed to load your department queue');
         } finally {
             setLoading(false);
         }
     };
 
-    const filteredVisits = visits.filter(v =>
+    const handleStartAttending = async (visitId) => {
+        try {
+            await api.post(`/queues/visits/${visitId}/start`);
+            toast.success('Patient session started');
+            fetchQueue();
+            setTab('active');
+        } catch (error) {
+            toast.error('Failed to start session');
+        }
+    };
+
+    const currentQueue = tab === 'waiting' ? queueData.waiting : queueData.active;
+
+    const filteredVisits = (currentQueue || []).filter(v =>
         v.patient?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         v.patient?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         v.visit_number?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -42,9 +61,11 @@ const ClinicalQueue = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                         <Activity className="w-8 h-8 text-indigo-600" />
-                        Clinical Queue
+                        {queueData.department?.name || 'Clinical'} Queue
                     </h1>
-                    <p className="text-slate-500 dark:text-slate-400">Monitoring active patient visits and consultations</p>
+                    <p className="text-slate-500 dark:text-slate-400">
+                        {queueData.department?.description || 'Monitoring active patient visits and consultations'}
+                    </p>
                 </div>
                 <div className="flex gap-2">
                     <button
@@ -62,25 +83,38 @@ const ClinicalQueue = () => {
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4">
+            {/* Tabs & Search */}
+            <div className="bg-white dark:bg-slate-800 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4">
+                <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+                    <button
+                        onClick={() => setTab('waiting')}
+                        className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${tab === 'waiting'
+                            ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+                            }`}
+                    >
+                        Waiting ({queueData.waiting?.length || 0})
+                    </button>
+                    <button
+                        onClick={() => setTab('active')}
+                        className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${tab === 'active'
+                            ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+                            }`}
+                    >
+                        Active ({queueData.active?.length || 0})
+                    </button>
+                </div>
+
                 <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
                         type="text"
-                        placeholder="Search queue by name or visit ID..."
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white"
+                        placeholder="Search patient in queue..."
+                        className="w-full pl-10 pr-4 py-2.5 bg-transparent text-sm outline-none dark:text-white"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                </div>
-                <div className="flex gap-2">
-                    <select className="px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white">
-                        <option>All Depts</option>
-                        <option>OPD</option>
-                        <option>IPD</option>
-                        <option>Emergency</option>
-                    </select>
                 </div>
             </div>
 
@@ -88,7 +122,7 @@ const ClinicalQueue = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
                     Array(6).fill(0).map((_, i) => (
-                        <div key={i} className="bg-white dark:bg-slate-800 h-48 rounded-2xl border border-slate-100 dark:border-slate-700 animate-pulse"></div>
+                        <div key={i} className="bg-white dark:bg-slate-800 h-56 rounded-2xl border border-slate-100 dark:border-slate-700 animate-pulse"></div>
                     ))
                 ) : filteredVisits.length > 0 ? (
                     filteredVisits.map((visit) => (
@@ -99,39 +133,63 @@ const ClinicalQueue = () => {
                             <div className="p-5">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-xl bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 flex items-center justify-center font-bold text-lg">
+                                        <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center font-bold text-lg border border-slate-200 dark:border-slate-600">
                                             {visit.patient?.first_name?.charAt(0)}{visit.patient?.last_name?.charAt(0)}
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
                                                 {visit.patient?.first_name} {visit.patient?.last_name}
                                             </h3>
-                                            <p className="text-xs text-slate-500 uppercase tracking-wider">{visit.visit_number}</p>
+                                            <p className="text-xs text-slate-500 uppercase tracking-wider">#{visit.patient?.patient_number}</p>
                                         </div>
                                     </div>
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${visit.visit_type === 'emergency' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-blue-50 text-blue-600 border border-blue-100'
+                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border ${visit.priority === 'emergency' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                                        visit.priority === 'high' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                                            'bg-blue-50 text-blue-600 border-blue-100'
                                         }`}>
-                                        {visit.visit_type}
+                                        {visit.priority}
                                     </span>
                                 </div>
 
-                                <div className="space-y-3 mb-6">
+                                <div className="space-y-3 mb-6 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                                     <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
                                         <Clock className="w-4 h-4 mr-2 text-slate-400" />
-                                        Waiting: {new Date(visit.visit_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        <span className="font-medium">Queued:</span>
+                                        <span className="ml-auto">{new Date(visit.queued_at || visit.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                     </div>
-                                    <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
-                                        <MapPin className="w-4 h-4 mr-2 text-slate-400" />
-                                        Triaged - Vitals Stable
+                                    <div className="flex items-start text-sm text-slate-600 dark:text-slate-400">
+                                        <MapPin className="w-4 h-4 mr-2 text-slate-400 mt-0.5" />
+                                        <span className="font-medium mr-2">Complaint:</span>
+                                        <span className="italic line-clamp-1">{visit.chief_complaint || 'No complaint specified'}</span>
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={() => navigate(`/clinical/encounters/${visit.patient_id}`)}
-                                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold rounded-xl border border-slate-200 dark:border-slate-700 hover:border-indigo-200 transition-all"
-                                >
-                                    Open Consultation <ChevronRight className="w-4 h-4" />
-                                </button>
+                                {tab === 'waiting' ? (
+                                    <button
+                                        onClick={() => handleStartAttending(visit.id)}
+                                        className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 dark:shadow-none hover:bg-indigo-700 transition-all"
+                                    >
+                                        Start Attending <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => navigate(`/clinical/encounters/${visit.patient_id}`)}
+                                            className="flex-[2] py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-100 dark:shadow-none hover:bg-emerald-700 transition-all text-sm"
+                                        >
+                                            Consultation
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedVisit(visit);
+                                                setIsTransferOpen(true);
+                                            }}
+                                            className="flex-1 py-3 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-sm flex items-center justify-center gap-1"
+                                        >
+                                            <ArrowRightLeft className="w-4 h-4" /> Transfer
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))
@@ -141,10 +199,23 @@ const ClinicalQueue = () => {
                             <Activity className="w-8 h-8 text-slate-300" />
                         </div>
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">Queue Empty</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1">There are no active visits pending consultation.</p>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1">There are no patients currently {tab === 'waiting' ? 'waiting in' : 'active at'} this department.</p>
                     </div>
                 )}
             </div>
+
+            {selectedVisit && (
+                <TransferModal
+                    isOpen={isTransferOpen}
+                    onClose={() => {
+                        setIsTransferOpen(false);
+                        setSelectedVisit(null);
+                    }}
+                    visitId={selectedVisit.id}
+                    patientName={`${selectedVisit.patient?.first_name} ${selectedVisit.patient?.last_name}`}
+                    onTransferred={fetchQueue}
+                />
+            )}
         </div>
     );
 };

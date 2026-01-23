@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use App\Models\Role;
+use App\Models\HospitalConfig;
+use App\Services\RoleContextService;
 
 class AuthController extends Controller
 {
@@ -50,6 +53,12 @@ class AuthController extends Controller
     public function me()
     {
         $user = auth()->user()->load(['roles.permissions']);
+        $roleService = new RoleContextService();
+        $config = HospitalConfig::current();
+        
+        // Get active role and available roles
+        $activeRole = $roleService->getActiveRole($user);
+        $availableRoles = $roleService->getAvailableRoles($user);
         
         // Flatten permissions for easier frontend consumption
         $permissions = $user->roles->flatMap(function ($role) {
@@ -58,7 +67,11 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => $user,
-            'permissions' => $permissions
+            'permissions' => $permissions,
+            'active_role' => $activeRole,
+            'available_roles' => $availableRoles,
+            'hospital_mode' => $config->hospital_mode,
+            'can_switch_roles' => $config->allow_multi_role_users && $availableRoles->count() > 1,
         ]);
     }
 
@@ -94,6 +107,13 @@ class AuthController extends Controller
     protected function respondWithToken($token)
     {
         $user = auth()->user()->load(['roles.permissions']);
+        $roleService = new RoleContextService();
+        $config = HospitalConfig::current();
+        
+        // Get active role and available roles
+        $activeRole = $roleService->getActiveRole($user);
+        $availableRoles = $roleService->getAvailableRoles($user);
+        
         $permissions = $user->roles->flatMap(function ($role) {
             return $role->permissions->pluck('name');
         })->unique()->values();
@@ -103,7 +123,41 @@ class AuthController extends Controller
             'token_type' => 'bearer',
             'expires_in' => auth()->factory()->getTTL() * 60,
             'user' => $user,
-            'permissions' => $permissions
+            'permissions' => $permissions,
+            'active_role' => $activeRole,
+            'available_roles' => $availableRoles,
+            'hospital_mode' => $config->hospital_mode,
+            'can_switch_roles' => $config->allow_multi_role_users && $availableRoles->count() > 1,
         ]);
+    }
+
+    /**
+     * Switch user's active role context.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function switchRole(Request $request)
+    {
+        $request->validate([
+            'role_id' => 'required|uuid|exists:roles,id',
+        ]);
+
+        try {
+            $user = auth()->user();
+            $role = Role::findOrFail($request->role_id);
+            $roleService = new RoleContextService();
+
+            $result = $roleService->switchRole($user, $role);
+
+            return response()->json([
+                'message' => $result['message'],
+                'active_role' => $result['active_role'],
+                'switched_at' => $result['switched_at'],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage()
+            ], 403);
+        }
     }
 }

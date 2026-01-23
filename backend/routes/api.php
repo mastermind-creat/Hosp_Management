@@ -12,6 +12,7 @@ Route::group([
     Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:api');
     Route::post('refresh', [AuthController::class, 'refresh'])->middleware('auth:api');
     Route::get('me', [AuthController::class, 'me'])->middleware('auth:api');
+    Route::post('switch-role', [AuthController::class, 'switchRole'])->middleware('auth:api');
 });
 
 Route::group([
@@ -129,8 +130,32 @@ Route::group([
     Route::get('/settings', [\App\Http\Controllers\SettingsController::class, 'index']);
     Route::post('/settings', [\App\Http\Controllers\SettingsController::class, 'update']);
     
+    // Hospital Configuration (Admin only)
+    Route::get('/hospital-config', [\App\Http\Controllers\HospitalConfigController::class, 'index']);
+    Route::put('/hospital-config', [\App\Http\Controllers\HospitalConfigController::class, 'update'])->middleware('rbac:manage_roles');
+    Route::post('/hospital-config/toggle-department', [\App\Http\Controllers\HospitalConfigController::class, 'toggleDepartment'])->middleware('rbac:manage_roles');
+    Route::get('/hospital-config/compliance-rules', [\App\Http\Controllers\HospitalConfigController::class, 'getComplianceRules']);
+    Route::put('/hospital-config/compliance-rules', [\App\Http\Controllers\HospitalConfigController::class, 'updateComplianceRules'])->middleware('rbac:manage_roles');
+    
     // Notifications
     Route::get('/notifications', [\App\Http\Controllers\NotificationsController::class, 'index']);
+
+    // Appointments
+    Route::get('/appointments', [\App\Http\Controllers\AppointmentController::class, 'index'])->middleware('rbac:view_appointments');
+    Route::post('/appointments', [\App\Http\Controllers\AppointmentController::class, 'store'])->middleware('rbac:create_appointments');
+    Route::get('/appointments/{id}', [\App\Http\Controllers\AppointmentController::class, 'show'])->middleware('rbac:view_appointments');
+    Route::put('/appointments/{id}', [\App\Http\Controllers\AppointmentController::class, 'update'])->middleware('rbac:view_appointments'); // view_appointments covers general management here
+    Route::delete('/appointments/{id}', [\App\Http\Controllers\AppointmentController::class, 'destroy'])->middleware('rbac:view_appointments');
+
+    // Queuing and Patient Flow
+    Route::group(['prefix' => 'queues'], function () {
+        Route::get('my-queue', [\App\Http\Controllers\VisitQueueController::class, 'myQueue']);
+        Route::get('department/{departmentId}', [\App\Http\Controllers\VisitQueueController::class, 'getQueue']);
+        Route::post('check-in', [\App\Http\Controllers\VisitQueueController::class, 'checkIn']);
+        Route::post('visits/{visitId}/transfer', [\App\Http\Controllers\VisitQueueController::class, 'transfer']);
+        Route::post('visits/{visitId}/start', [\App\Http\Controllers\VisitQueueController::class, 'startAttending']);
+        Route::post('visits/{visitId}/complete', [\App\Http\Controllers\VisitQueueController::class, 'complete']);
+    });
 });
 
 // Public Config

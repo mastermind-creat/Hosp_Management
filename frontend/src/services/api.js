@@ -2,8 +2,9 @@ import axios from 'axios'
 import { addToQueue } from '../store/slices/syncSlice'
 import { toast } from 'react-hot-toast'
 
+const isTauri = !!window.__TAURI_INTERNALS__;
 const api = axios.create({
-    baseURL: '/api/v1',
+    baseURL: isTauri ? 'http://localhost:8080/api/v1' : '/api/v1',
     headers: {
         'Content-Type': 'application/json',
     },

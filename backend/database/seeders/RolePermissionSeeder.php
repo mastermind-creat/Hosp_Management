@@ -19,12 +19,12 @@ class RolePermissionSeeder extends Seeder
             
             'receptionist' => [
                 'view_patients', 'create_patients', 'edit_patients',
-                'view_appointments', 'create_appointments',
-                'create_visits', 'view_visits'
+                'view_appointments', 'create_appointments', 'view_users',
+                'create_visits', 'view_visits', 'view_reports'
             ],
             
             'doctor' => [
-                'view_patients', 'view_visits',
+                'view_patients', 'view_visits', 'view_users',
                 'record_vitals', 'record_diagnosis', 'prescribe_drugs',
                 'request_tests', 'view_lab_requests', 'manage_admissions',
                 'view_reports'
@@ -32,17 +32,17 @@ class RolePermissionSeeder extends Seeder
             
             'nurse' => [
                 'view_patients', 'view_visits',
-                'record_vitals', 'manage_admissions'
+                'record_vitals', 'manage_admissions', 'view_reports'
             ],
             
             'lab_tech' => [
                 'view_lab_requests', 'enter_lab_results', 'verify_lab_results',
-                'view_patients'
+                'view_patients', 'view_reports'
             ],
             
             'pharmacist' => [
                 'view_drugs', 'dispense_drugs', 'manage_stock',
-                'view_patients', 'view_visits'
+                'view_patients', 'view_visits', 'view_reports'
             ],
             
             'accountant' => [

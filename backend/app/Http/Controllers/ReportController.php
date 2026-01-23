@@ -50,38 +50,92 @@ class ReportController extends Controller
         return response()->json($payments);
     }
 
-    public function dashboardStats()
+    public function dashboardStats(Request $request)
     {
+        $user = $request->user();
+        
+        // Use the active role from session if it exists, otherwise fallback to first role
+        $activeRoleId = session('active_role_id');
+        $activeRole = $activeRoleId 
+            ? \App\Models\Role::find($activeRoleId) 
+            : $user->roles->first();
+            
+        $role = $activeRole?->name ?? 'staff';
         $today = now()->toDateString();
         
-        // 1. Core Summary Stats
-        $stats = [
+        // Base stats available to everyone (or role-limited below)
+        $data = [
             'total_patients' => Patient::count(),
-            // Loosen appointment check to include all pending future appointments
             'active_appointments' => \App\Models\Appointment::where('status', 'pending')
                 ->where('appointment_date', '>=', $today) 
                 ->count(),
-            'revenue_today' => (float) Payment::whereDate('payment_date', $today)->sum('amount'), // Ensure float
-            'online_staff' => \App\Models\User::where('last_login_at', '>=', now()->subHours(1))->count(),
+            'online_staff' => \App\Models\User::where('last_login_at', '>=', now()->subHours(12))->count(),
         ];
 
-        // 2. Weekly Revenue Analysis (Last 7 Days)
-        $revenueAnalysis = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i);
-            $dayName = $date->format('D');
-            $amount = Payment::whereDate('payment_date', $date->toDateString())->sum('amount');
-            $patientCount = \App\Models\PatientVisit::whereDate('visit_date', $date->toDateString())->count();
-            
-            $revenueAnalysis[] = [
-                'name' => $dayName,
-                'revenue' => (float)$amount,
-                'patients' => $patientCount
-            ];
+        // 1. Role-Specific Summary Stats
+        if (in_array($role, ['admin', 'accountant'])) {
+            $data['revenue_today'] = (float) Payment::whereDate('payment_date', $today)->sum('amount');
+        }
+
+        if ($role === 'receptionist') {
+            $data['registrations_today'] = Patient::whereDate('created_at', $today)->count();
+            $data['checkins_today'] = \App\Models\PatientVisit::whereDate('visit_date', $today)->count();
+        }
+
+        if (in_array($role, ['doctor', 'nurse'])) {
+            $data['pending_consultations'] = \App\Models\PatientVisit::where('status', 'active')
+                ->where('visit_type', 'opd')
+                ->count();
+            $data['admitted_patients'] = \App\Models\PatientVisit::where('status', 'active')
+                ->where('visit_type', 'ipd')
+                ->count();
+        }
+
+        if ($role === 'pharmacist') {
+            $data['low_stock_count'] = \App\Models\Drug::whereRaw('stock_quantity <= reorder_level')->count();
+            $data['dispensed_today'] = \App\Models\DrugDispensing::whereDate('created_at', $today)->count();
+        }
+
+        if ($role === 'lab_tech') {
+            $data['pending_tests'] = \App\Models\TestRequest::where('status', 'pending')->count();
+            $data['verified_today'] = \App\Models\TestRequest::where('status', 'verified')
+                ->whereDate('updated_at', $today)
+                ->count();
+        }
+
+        // 2. Data Analysis Charts
+        if (in_array($role, ['admin', 'accountant'])) {
+            // Revenue Analysis for Finance-focused roles
+            $revenueAnalysis = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $date = now()->subDays($i);
+                $dayName = $date->format('D');
+                $amount = Payment::whereDate('payment_date', $date->toDateString())->sum('amount');
+                $revenueAnalysis[] = [
+                    'name' => $dayName,
+                    'value' => (float)$amount,
+                ];
+            }
+            $data['chart_data'] = $revenueAnalysis;
+            $data['chart_type'] = 'revenue';
+        } else {
+            // Visit/Activity Analysis for Operational roles
+            $activityAnalysis = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $date = now()->subDays($i);
+                $dayName = $date->format('D');
+                $count = \App\Models\PatientVisit::whereDate('visit_date', $date->toDateString())->count();
+                $activityAnalysis[] = [
+                    'name' => $dayName, 
+                    'value' => $count
+                ];
+            }
+            $data['chart_data'] = $activityAnalysis;
+            $data['chart_type'] = 'activity';
         }
 
         // 3. Recent Activity (Latest 5 Visits)
-        $recentActivity = \App\Models\PatientVisit::with('patient')
+        $data['recent_activity'] = \App\Models\PatientVisit::with('patient')
             ->latest()
             ->limit(5)
             ->get()
@@ -97,10 +151,8 @@ class ReportController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => array_merge($stats, [
-                'revenue_analysis' => $revenueAnalysis,
-                'recent_activity' => $recentActivity
-            ])
+            'data' => $data,
+            'role' => $role
         ]);
     }
 

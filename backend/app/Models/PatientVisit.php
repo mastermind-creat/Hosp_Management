@@ -25,15 +25,25 @@ class PatientVisit extends Model
         'treatment_plan',
         'notes',
         'status',
+        'current_department_id',
+        'queue_status',
+        'priority',
+        'queued_at',
     ];
 
     protected $casts = [
         'visit_date' => 'datetime',
+        'queued_at' => 'datetime',
     ];
 
     public function patient()
     {
         return $this->belongsTo(Patient::class);
+    }
+
+    public function currentDepartment()
+    {
+        return $this->belongsTo(Department::class, 'current_department_id');
     }
 
     public function doctor()

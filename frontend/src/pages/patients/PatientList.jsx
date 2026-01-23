@@ -14,24 +14,34 @@ import {
     UserPlus,
     ChevronLeft,
     ChevronRight,
-    WifiOff
+    WifiOff,
+    MapPin
 } from 'lucide-react'
 import { fetchPatients } from '../../store/slices/patientSlice'
+import CheckInModal from '../../components/patients/CheckInModal'
 
 const PatientList = () => {
     const dispatch = useDispatch()
     const { patients = [], pagination = {}, loading, error } = useSelector((state) => state.patient || {})
     const { queue = [] } = useSelector((state) => state.sync || {})
     const [searchTerm, setSearchTerm] = useState('')
+    const [filters, setFilters] = useState({
+        gender: 'all',
+        status: 'all',
+        sort_by: 'created_at',
+        sort_order: 'desc'
+    })
+    const [showFilters, setShowFilters] = useState(false)
+    const [isCheckInOpen, setIsCheckInOpen] = useState(false)
+    const [selectedPatient, setSelectedPatient] = useState(null)
 
     useEffect(() => {
-        dispatch(fetchPatients({ page: 1 }))
-    }, [dispatch])
-
-    const handleSearch = (e) => {
-        e.preventDefault()
-        dispatch(fetchPatients({ search: searchTerm }))
-    }
+        dispatch(fetchPatients({
+            page: 1,
+            search: searchTerm,
+            ...filters
+        }))
+    }, [dispatch, searchTerm, filters])
 
     // Identify patients that are currently in the sync queue
     const queuedPatients = (queue || [])
@@ -60,25 +70,76 @@ const PatientList = () => {
             </div>
 
             {/* Filters and Search */}
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4">
-                <form onSubmit={handleSearch} className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search by name, ID or phone..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all dark:text-white"
-                    />
-                </form>
-                <div className="flex gap-2">
-                    <button className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-all">
-                        <Filter className="w-4 h-4 mr-2" /> Filter
-                    </button>
-                    <button className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-all">
-                        <ArrowUpDown className="w-4 h-4 mr-2" /> Sort
-                    </button>
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search by name, ID or phone..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all dark:text-white"
+                        />
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`flex items-center px-4 py-2 border rounded-xl text-sm font-medium transition-all ${showFilters
+                                ? 'bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-400'
+                                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                        >
+                            <Filter className="w-4 h-4 mr-2" /> Filters
+                        </button>
+                        <select
+                            value={`${filters.sort_by}-${filters.sort_order}`}
+                            onChange={(e) => {
+                                const [sort_by, sort_order] = e.target.value.split('-')
+                                setFilters(prev => ({ ...prev, sort_by, sort_order }))
+                            }}
+                            className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        >
+                            <option value="created_at-desc">Newest First</option>
+                            <option value="created_at-asc">Oldest First</option>
+                            <option value="first_name-asc">Name (A-Z)</option>
+                            <option value="first_name-desc">Name (Z-A)</option>
+                        </select>
+                    </div>
                 </div>
+
+                {showFilters && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100 dark:border-slate-700"
+                    >
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Gender</label>
+                            <select
+                                value={filters.gender}
+                                onChange={(e) => setFilters(prev => ({ ...prev, gender: e.target.value }))}
+                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            >
+                                <option value="all">All Genders</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 block">Status</label>
+                            <select
+                                value={filters.status}
+                                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            >
+                                <option value="all">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </motion.div>
+                )}
             </div>
 
             {/* Table */}
@@ -141,12 +202,24 @@ const PatientList = () => {
                                         )}
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <Link
-                                            to={`/patients/${patient.id}`}
-                                            className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-all inline-block"
-                                        >
-                                            <MoreVertical className="w-5 h-5" />
-                                        </Link>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedPatient(patient)
+                                                    setIsCheckInOpen(true)
+                                                }}
+                                                className="p-2 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-all"
+                                                title="Check In / Queue"
+                                            >
+                                                <MapPin className="w-5 h-5" />
+                                            </button>
+                                            <Link
+                                                to={`/patients/${patient.id}`}
+                                                className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-all"
+                                            >
+                                                <MoreVertical className="w-5 h-5" />
+                                            </Link>
+                                        </div>
                                     </td>
                                 </motion.tr>
                             ))}
@@ -176,6 +249,18 @@ const PatientList = () => {
                     </div>
                 </div>
             </div>
+
+            {selectedPatient && (
+                <CheckInModal
+                    isOpen={isCheckInOpen}
+                    onClose={() => {
+                        setIsCheckInOpen(false)
+                        setSelectedPatient(null)
+                    }}
+                    patient={selectedPatient}
+                    onCheckedIn={() => dispatch(fetchPatients({ page: 1, search: searchTerm, ...filters }))}
+                />
+            )}
         </div>
     )
 }

@@ -4,10 +4,15 @@ import api from '../../services/api'
 // Async thunks
 export const fetchPatients = createAsyncThunk(
     'patient/fetchPatients',
-    async ({ page = 1, search = '' }, { rejectWithValue }) => {
+    async ({ page = 1, search = '', ...rest }, { rejectWithValue }) => {
         try {
             const response = await api.get('/patients', {
-                params: { page, search, per_page: 20 },
+                params: {
+                    page,
+                    search,
+                    per_page: 20,
+                    ...rest
+                },
             })
             return response.data
         } catch (error) {

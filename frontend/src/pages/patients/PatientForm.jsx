@@ -23,15 +23,20 @@ import { toast } from 'react-hot-toast'
 
 const patientSchema = z.object({
     first_name: z.string().min(2, 'First name is required'),
+    middle_name: z.string().optional(),
     last_name: z.string().min(2, 'Last name is required'),
     email: z.string().email('Invalid email address').or(z.literal('')),
     phone: z.string().min(10, 'Valid phone number is required'),
     date_of_birth: z.string().min(1, 'Date of birth is required'),
     gender: z.enum(['male', 'female', 'other']),
-    address: z.string().min(5, 'Address is required'),
-    national_id: z.string().min(5, 'ID/Passport number is required'),
+    address: z.string().optional(),
+    national_id: z.string().optional(),
     emergency_contact_name: z.string().min(2, 'Emergency contact name is required'),
     emergency_contact_phone: z.string().min(10, 'Emergency contact phone is required'),
+    emergency_contact_relationship: z.string().optional(),
+    insurance_type: z.enum(['nhif', 'shif', 'private', 'corporate', 'none']).default('none'),
+    insurance_provider: z.string().optional(),
+    insurance_number: z.string().optional(),
 })
 
 const PatientForm = () => {
@@ -45,13 +50,17 @@ const PatientForm = () => {
         register,
         handleSubmit,
         reset,
+        watch,
         formState: { errors },
     } = useForm({
         resolver: zodResolver(patientSchema),
         defaultValues: {
-            gender: 'male'
+            gender: 'male',
+            insurance_type: 'none'
         }
     })
+
+    const insuranceType = watch('insurance_type')
 
     useEffect(() => {
         if (isEdit) {
@@ -73,6 +82,8 @@ const PatientForm = () => {
         if (!result.error) {
             toast.success(isEdit ? 'Patient updated successfully' : 'Patient registered successfully')
             navigate('/patients')
+        } else {
+            toast.error(result.payload || (isEdit ? 'Failed to update patient' : 'Failed to register patient'))
         }
     }
 
@@ -113,6 +124,14 @@ const PatientForm = () => {
                                     placeholder="e.g John"
                                 />
                                 {errors.first_name && <p className="text-xs text-red-500 ml-1">{errors.first_name.message}</p>}
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">Middle Name (Optional)</label>
+                                <input
+                                    {...register('middle_name')}
+                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all dark:text-white"
+                                    placeholder="e.g. Mwangi"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">Last Name</label>
@@ -217,6 +236,57 @@ const PatientForm = () => {
                                 />
                                 {errors.emergency_contact_phone && <p className="text-xs text-red-500 ml-1">{errors.emergency_contact_phone.message}</p>}
                             </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">Relationship</label>
+                                <input
+                                    {...register('emergency_contact_relationship')}
+                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all dark:text-white"
+                                    placeholder="e.g. Spouse, Parent, Friend"
+                                />
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Insurance Information */}
+                    <section className="space-y-6">
+                        <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                            <Shield className="w-5 h-5 font-bold" />
+                            <h2 className="text-sm font-bold uppercase tracking-wider">Insurance Information</h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">Insurance Type</label>
+                                <select
+                                    {...register('insurance_type')}
+                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all dark:text-white"
+                                >
+                                    <option value="none">Self-Pay / None</option>
+                                    <option value="shif">SHIF / SHA</option>
+                                    <option value="nhif">NHIF (Legacy)</option>
+                                    <option value="private">Private Insurance</option>
+                                    <option value="corporate">Corporate Bill</option>
+                                </select>
+                            </div>
+                            {insuranceType !== 'none' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">Provider Name</label>
+                                        <input
+                                            {...register('insurance_provider')}
+                                            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all dark:text-white"
+                                            placeholder="e.g Jubilee, Britam"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1">Policy / Member Number</label>
+                                        <input
+                                            {...register('insurance_number')}
+                                            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all dark:text-white"
+                                            placeholder="Enter Policy Number"
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </section>
 

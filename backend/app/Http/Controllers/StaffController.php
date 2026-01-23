@@ -9,9 +9,36 @@ class StaffController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return \App\Models\StaffProfile::with(['user.roles', 'department', 'designation'])->get();
+        $query = \App\Models\StaffProfile::with(['user.roles', 'department', 'designation']);
+
+        if ($request->filled('department_id') && $request->department_id !== 'all') {
+            $query->where('department_id', $request->department_id);
+        }
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('employment_status', $request->status);
+        }
+
+        if ($request->filled('role_id') && $request->role_id !== 'all') {
+            $roleId = $request->role_id;
+            $query->whereHas('user.roles', function($q) use ($roleId) {
+                $q->where('roles.id', $roleId);
+            });
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('user', function($qu) use ($search) {
+                    $qu->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                })->orWhere('employee_id', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->get();
     }
 
     public function store(Request $request)

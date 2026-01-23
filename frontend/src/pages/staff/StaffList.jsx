@@ -11,23 +11,49 @@ import { Link } from 'react-router-dom';
 const StaffList = () => {
     const [staff, setStaff] = useState([]);
     const [departments, setDepartments] = useState([]);
+    const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterDept, setFilterDept] = useState('all');
+    const [filterRole, setFilterRole] = useState('all');
+    const [filterStatus, setFilterStatus] = useState('all'); // Default to all
 
     useEffect(() => {
-        fetchStaff();
+        const timer = setTimeout(() => {
+            fetchStaff();
+        }, 300); // Debounce search
+        return () => clearTimeout(timer);
+    }, [searchTerm, filterDept, filterRole, filterStatus]);
+
+    useEffect(() => {
+        fetchMetadata();
     }, []);
+
+    const fetchMetadata = async () => {
+        try {
+            const [deptsRes, rolesRes] = await Promise.all([
+                api.get('/departments'),
+                api.get('/roles')
+            ]);
+            setDepartments(deptsRes.data);
+            setRoles(rolesRes.data);
+        } catch (error) {
+            console.error('Failed to load metadata');
+        }
+    };
 
     const fetchStaff = async () => {
         try {
             setLoading(true);
-            const [staffRes, deptsRes] = await Promise.all([
-                api.get('/staff'),
-                api.get('/departments')
-            ]);
-            setStaff(staffRes.data);
-            setDepartments(deptsRes.data);
+            const res = await api.get('/staff', {
+                params: {
+                    department_id: filterDept,
+                    role_id: filterRole,
+                    status: filterStatus,
+                    search: searchTerm
+                }
+            });
+            setStaff(res.data);
         } catch (error) {
             toast.error('Failed to load staff records');
         } finally {
@@ -70,13 +96,8 @@ const StaffList = () => {
         }
     };
 
-    const filteredStaff = staff.filter(s => {
-        const matchesSearch = s.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.employee_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.user.email.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesDept = filterDept === 'all' || s.department_id === parseInt(filterDept);
-        return matchesSearch && matchesDept;
-    });
+    // Data is now filtered on the backend
+    const filteredStaff = staff;
 
     return (
         <div className="space-y-6">
@@ -124,8 +145,23 @@ const StaffList = () => {
                                 <option key={dept.id} value={dept.id}>{dept.name}</option>
                             ))}
                         </select>
-                        <select className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                            <option value="all">Status: Active</option>
+                        <select
+                            value={filterRole}
+                            onChange={(e) => setFilterRole(e.target.value)}
+                            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-semibold text-slate-700 dark:text-slate-300"
+                        >
+                            <option value="all">All Roles</option>
+                            {roles.map(role => (
+                                <option key={role.id} value={role.id}>{role.display_name}</option>
+                            ))}
+                        </select>
+                        <select
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-semibold text-slate-700 dark:text-slate-300"
+                        >
+                            <option value="all">All Status</option>
+                            <option value="active">Status: Active</option>
                             <option value="suspended">Suspended</option>
                             <option value="exited">Exited</option>
                         </select>

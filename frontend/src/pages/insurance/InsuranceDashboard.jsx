@@ -35,7 +35,7 @@ const InsuranceDashboard = () => {
                         <ShieldCheck className="w-8 h-8 text-indigo-600" />
                         Insurance & Schemes
                     </h1>
-                    <p className="text-slate-500 dark:text-slate-400">Manage health providers, SHIF/NHIF claims and policy coverage</p>
+                    <p className="text-slate-500 dark:text-slate-400">Manage health providers, SHIF/SHA claims and policy coverage</p>
                 </div>
                 <div className="flex gap-2">
                     <button className="inline-flex items-center px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-colors">
@@ -100,7 +100,7 @@ const InsuranceDashboard = () => {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {[
-                                { name: 'SHIF / NHIF Kenya', type: 'Public', patients: 845, amount: 845000 },
+                                { name: 'SHIF / SHA Kenya', type: 'Public', patients: 845, amount: 845000 },
                                 { name: 'Jubilee Insurance', type: 'Private', patients: 124, amount: 320000 },
                                 { name: 'AAR Health', type: 'Private', patients: 86, amount: 154000 },
                                 { name: 'Old Mutual', type: 'Private', patients: 42, amount: 98000 },

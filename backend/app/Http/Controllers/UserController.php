@@ -24,6 +24,13 @@ class UserController extends Controller
             });
         }
 
+        if ($request->has('role')) {
+            $roles = explode(',', $request->role);
+            $query->whereHas('roles', function($q) use ($roles) {
+                $q->whereIn('name', $roles);
+            });
+        }
+
         return $query->paginate($request->get('limit', 15));
     }
 

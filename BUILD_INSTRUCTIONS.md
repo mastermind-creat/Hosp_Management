@@ -58,3 +58,6 @@ For updates:
 1. Replace `backend/app`, `backend/resources`, and `frontend/dist`.
 2. **DO NOT** replace `database.sqlite` or `.env`.
 3. Run `php artisan migrate --force` to apply schema changes.
+
+## 8. Creating the Final Installer
+For a complete guide on how to bundle all components (PHP, Backend, Frontend) into a single Windows executable, see the [Release Creation Guide](docs/RELEASE_GUIDE.md).

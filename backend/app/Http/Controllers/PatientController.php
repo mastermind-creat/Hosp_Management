@@ -69,6 +69,7 @@ class PatientController extends Controller
             'county' => 'nullable|string',
             'emergency_contact_name' => 'nullable|string',
             'emergency_contact_phone' => 'nullable|string',
+            'emergency_contact_relationship' => 'nullable|string',
             'insurance_provider' => 'nullable|string',
             'insurance_number' => 'nullable|string',
             'insurance_type' => 'sometimes|in:nhif,shif,private,corporate,none',
@@ -111,6 +112,7 @@ class PatientController extends Controller
             'insurance_type' => 'sometimes|in:nhif,shif,private,corporate,none',
             'emergency_contact_name' => 'nullable|string',
             'emergency_contact_phone' => 'nullable|string',
+            'emergency_contact_relationship' => 'nullable|string',
             'is_active' => 'sometimes|boolean',
         ]);
 

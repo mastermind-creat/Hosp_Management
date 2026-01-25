@@ -60,4 +60,14 @@ class PatientVisit extends Model
     {
         return $this->hasMany(Prescription::class, 'visit_id');
     }
+
+    public function visitServices()
+    {
+        return $this->hasMany(VisitService::class, 'visit_id');
+    }
+
+    public function testRequests()
+    {
+        return $this->hasMany(TestRequest::class, 'visit_id');
+    }
 }

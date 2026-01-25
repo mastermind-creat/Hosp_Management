@@ -22,12 +22,10 @@ const TransferModal = ({ isOpen, onClose, visitId, patientName, onTransferred })
     const fetchDepartments = async () => {
         setLoading(true);
         try {
-            const response = await api.get('/staff/structure/departments');
-            // Filter common clinical departments
-            const clinicalDepts = (response.data.data || response.data).filter(d =>
-                ['Laboratory', 'Pharmacy', 'Consultation', 'Emergency & Trauma'].includes(d.name)
-            );
-            setDepartments(clinicalDepts);
+            const response = await api.get('/departments');
+            // Show all departments as requested
+            const allDepts = response.data.data || response.data;
+            setDepartments(allDepts);
         } catch (error) {
             toast.error('Failed to load departments');
         } finally {

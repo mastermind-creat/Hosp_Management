@@ -12,7 +12,12 @@ import TransferModal from '../../components/clinical/TransferModal';
 
 const ClinicalQueue = () => {
     const navigate = useNavigate();
+    const { activeRole } = useSelector(state => state.auth);
+    const isAdmin = activeRole?.name === 'admin';
+
     const [queueData, setQueueData] = useState({ waiting: [], active: [], department: null });
+    const [departments, setDepartments] = useState([]);
+    const [selectedDeptId, setSelectedDeptId] = useState('');
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [tab, setTab] = useState('waiting'); // 'waiting' or 'active'
@@ -20,14 +25,33 @@ const ClinicalQueue = () => {
     const [selectedVisit, setSelectedVisit] = useState(null);
 
     useEffect(() => {
+        if (isAdmin) {
+            fetchDepartments();
+        }
         fetchQueue();
-    }, []);
+    }, [selectedDeptId]);
+
+    const fetchDepartments = async () => {
+        try {
+            const response = await api.get('/departments');
+            setDepartments(response.data);
+        } catch (error) {
+            console.error('Failed to fetch departments');
+        }
+    };
 
     const fetchQueue = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/queues/my-queue');
+            const params = selectedDeptId ? { department_id: selectedDeptId } : {};
+            const response = await api.get('/queues/my-queue', { params });
             setQueueData(response.data);
+
+            // If it's the first load and we don't have a selectedDeptId yet (for admin), 
+            // sync it with the department returned by the backend
+            if (isAdmin && !selectedDeptId && response.data.department) {
+                setSelectedDeptId(response.data.department.id);
+            }
         } catch (error) {
             console.error('Failed to fetch clinical queue');
             toast.error('Failed to load your department queue');
@@ -68,6 +92,18 @@ const ClinicalQueue = () => {
                     </p>
                 </div>
                 <div className="flex gap-2">
+                    {isAdmin && (
+                        <select
+                            value={selectedDeptId}
+                            onChange={(e) => setSelectedDeptId(e.target.value)}
+                            className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white"
+                        >
+                            <option value="">Select Department</option>
+                            {departments.map(dept => (
+                                <option key={dept.id} value={dept.id}>{dept.name}</option>
+                            ))}
+                        </select>
+                    )}
                     <button
                         onClick={fetchQueue}
                         className="p-2 text-slate-500 hover:text-indigo-600 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition-all"
@@ -174,10 +210,24 @@ const ClinicalQueue = () => {
                                 ) : (
                                     <div className="flex gap-2">
                                         <button
-                                            onClick={() => navigate(`/clinical/encounters/${visit.patient_id}`)}
-                                            className="flex-[2] py-3 bg-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-100 dark:shadow-none hover:bg-emerald-700 transition-all text-sm"
+                                            onClick={() => {
+                                                const isAccounting = queueData.department?.name?.toLowerCase().includes('account') ||
+                                                    queueData.department?.name?.toLowerCase().includes('bill');
+
+                                                if (isAccounting) {
+                                                    navigate(`/billing/new?visit_id=${visit.id}&patient_id=${visit.patient_id}&name=${visit.patient?.first_name}+${visit.patient?.last_name}`);
+                                                } else {
+                                                    navigate(`/clinical/encounters/${visit.patient_id}`);
+                                                }
+                                            }}
+                                            className={`flex-[2] py-3 text-white font-bold rounded-xl shadow-lg transition-all text-sm ${(queueData.department?.name?.toLowerCase().includes('account') || queueData.department?.name?.toLowerCase().includes('bill'))
+                                                    ? 'bg-emerald-600 shadow-emerald-100 hover:bg-emerald-700'
+                                                    : 'bg-indigo-600 shadow-indigo-100 hover:bg-indigo-700'
+                                                }`}
                                         >
-                                            Consultation
+                                            {(queueData.department?.name?.toLowerCase().includes('account') || queueData.department?.name?.toLowerCase().includes('bill'))
+                                                ? 'Generate Invoice'
+                                                : 'Consultation'}
                                         </button>
                                         <button
                                             onClick={() => {

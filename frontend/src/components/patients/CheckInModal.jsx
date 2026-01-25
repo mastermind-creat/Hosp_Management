@@ -23,15 +23,13 @@ const CheckInModal = ({ isOpen, onClose, patient, onCheckedIn }) => {
     const fetchDepartments = async () => {
         setLoading(true);
         try {
-            const response = await api.get('/staff/structure/departments');
-            // Filter only active departments, exclude administrative ones if possible
-            const clinicalDepts = (response.data.data || response.data).filter(d =>
-                ['Triage', 'Consultation', 'Emergency & Trauma', 'Laboratory', 'Pharmacy'].includes(d.name)
-            );
-            setDepartments(clinicalDepts);
+            const response = await api.get('/departments');
+            // Show all departments as requested
+            const allDepts = response.data.data || response.data;
+            setDepartments(allDepts);
 
             // Set default to Triage if available
-            const triage = clinicalDepts.find(d => d.name === 'Triage');
+            const triage = allDepts.find(d => d.name === 'Triage');
             if (triage) {
                 setFormData(prev => ({ ...prev, department_id: triage.id }));
             }

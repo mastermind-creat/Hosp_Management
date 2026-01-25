@@ -5,6 +5,9 @@ use App\Http\Controllers\BackupController;
 use App\Http\Controllers\InsuranceProviderController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('v1/settings/public-config', [\App\Http\Controllers\SettingsController::class, 'publicConfig']);
+
+
 Route::group([
     'prefix' => 'v1/auth'
 ], function ($router) {
@@ -28,7 +31,8 @@ Route::group([
 
     // Staff & HR Management
     Route::apiResource('staff', \App\Http\Controllers\StaffController::class)->middleware('rbac:manage_staff');
-    Route::apiResource('departments', \App\Http\Controllers\DepartmentController::class)->middleware('rbac:manage_departments');
+    Route::get('departments', [\App\Http\Controllers\DepartmentController::class, 'index']);
+    Route::apiResource('departments', \App\Http\Controllers\DepartmentController::class)->except(['index'])->middleware('rbac:manage_departments');
     Route::apiResource('designations', \App\Http\Controllers\DesignationController::class)->middleware('rbac:manage_designations');
 
     // Role Management
@@ -52,6 +56,8 @@ Route::group([
     Route::post('clinical/visits/{id}/diagnosis', [\App\Http\Controllers\ClinicalController::class, 'recordDiagnosis'])->middleware('rbac:record_diagnosis');
     Route::post('clinical/visits/{id}/notes', [\App\Http\Controllers\ClinicalController::class, 'storeTreatmentNote'])->middleware('rbac:record_vitals');
     Route::post('clinical/visits/{id}/prescriptions', [\App\Http\Controllers\ClinicalController::class, 'storePrescription'])->middleware('rbac:prescribe_drugs');
+    Route::post('clinical/visits/{id}/lab-requests', [\App\Http\Controllers\ClinicalController::class, 'storeLabRequests'])->middleware('rbac:request_tests');
+    Route::post('clinical/visits/{id}/services', [\App\Http\Controllers\ClinicalController::class, 'storeServices'])->middleware('rbac:view_visits');
     Route::post('clinical/visits/{id}/admissions', [\App\Http\Controllers\ClinicalController::class, 'admitPatient'])->middleware('rbac:manage_admissions');
     Route::put('clinical/admissions/{id}/discharge', [\App\Http\Controllers\ClinicalController::class, 'dischargePatient'])->middleware('rbac:manage_admissions');
 
@@ -67,6 +73,7 @@ Route::group([
     Route::post('invoices', [\App\Http\Controllers\BillingController::class, 'store'])->middleware('rbac:create_invoices');
     Route::get('invoices/{id}', [\App\Http\Controllers\BillingController::class, 'show'])->middleware('rbac:view_invoices');
     Route::put('invoices/{id}/void', [\App\Http\Controllers\BillingController::class, 'void'])->middleware('rbac:void_transactions');
+    Route::get('visits/{visitId}/items', [\App\Http\Controllers\BillingController::class, 'getVisitItems'])->middleware('rbac:view_invoices');
     
     Route::post('payments', [\App\Http\Controllers\PaymentController::class, 'store'])->middleware('rbac:record_payments');
     Route::get('reports/daily-summary', [\App\Http\Controllers\PaymentController::class, 'dailySummary'])->middleware('rbac:view_financial_reports');
@@ -96,6 +103,12 @@ Route::group([
     Route::post('lab/requests/{id}/sample', [\App\Http\Controllers\LabController::class, 'collectSample'])->middleware('rbac:enter_lab_results');
     Route::post('lab/requests/{id}/results', [\App\Http\Controllers\LabController::class, 'enterResult'])->middleware('rbac:enter_lab_results');
     Route::put('lab/requests/{id}/verify', [\App\Http\Controllers\LabController::class, 'verifyResult'])->middleware('rbac:verify_lab_results');
+
+    // Services Management
+    Route::get('services', [\App\Http\Controllers\ServiceController::class, 'index']);
+    Route::post('services', [\App\Http\Controllers\ServiceController::class, 'store'])->middleware('rbac:manage_roles');
+    Route::put('services/{id}', [\App\Http\Controllers\ServiceController::class, 'update'])->middleware('rbac:manage_roles');
+    Route::delete('services/{id}', [\App\Http\Controllers\ServiceController::class, 'destroy'])->middleware('rbac:manage_roles');
 
     // Reports & Analytics
     Route::get('reports/revenue', [\App\Http\Controllers\ReportController::class, 'revenueReport'])->middleware('rbac:view_financial_reports');

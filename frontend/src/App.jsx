@@ -54,6 +54,8 @@ import SystemLogs from './pages/admin/SystemLogs'
 import SystemSettings from './pages/admin/SystemSettings'
 import ClinicalTemplates from './pages/admin/ClinicalTemplates'
 import HospitalConfigSettings from './pages/admin/HospitalConfigSettings'
+import ServiceManagement from './pages/admin/ServiceManagement'
+import LabTestManagement from './pages/admin/LabTestManagement'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -178,6 +180,8 @@ function App() {
                     <Route path="/admin/system-logs" element={<SystemLogs />} />
                     <Route path="/admin/clinical-templates" element={<ClinicalTemplates />} />
                     <Route path="/admin/hospital-config" element={<HospitalConfigSettings />} />
+                    <Route path="/admin/services" element={<ServiceManagement />} />
+                    <Route path="/admin/lab-tests" element={<LabTestManagement />} />
                     <Route path="/settings" element={<SystemSettings />} />
                     <Route path="/reports" element={<ReportsDashboard />} />
                 </Route>

@@ -11,6 +11,7 @@ import { formatKES } from '../../utils/format';
 import { format } from 'date-fns';
 import { downloadBlob } from '../../utils/download';
 import { toast } from 'react-hot-toast';
+import ThermalReceipt from '../../components/billing/ThermalReceipt';
 
 const InvoiceDetail = () => {
     const { id } = useParams();
@@ -61,6 +62,28 @@ const InvoiceDetail = () => {
         }
     };
 
+    const handlePrintThermal = () => {
+        const printContent = document.getElementById('thermal-receipt-content');
+        if (!printContent) {
+            toast.error('Thermal receipt content not found');
+            return;
+        }
+
+        const printWindow = window.open('', '_blank', 'width=350,height=600');
+        printWindow.document.write('<html><head><title>Thermal Receipt</title>');
+        printWindow.document.write('<script src="https://cdn.tailwindcss.com"></script>');
+        printWindow.document.write('</head><body class="bg-white">');
+        printWindow.document.write(printContent.innerHTML);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+
+        setTimeout(() => {
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        }, 500);
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">
@@ -104,7 +127,13 @@ const InvoiceDetail = () => {
                         onClick={() => window.print()}
                         className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
                     >
-                        <Printer className="w-4 h-4 mr-2" /> Print
+                        <Printer className="w-4 h-4 mr-2" /> Print A4
+                    </button>
+                    <button
+                        onClick={handlePrintThermal}
+                        className="flex items-center px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-xl text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition-colors"
+                    >
+                        <Printer className="w-4 h-4 mr-2" /> Print Thermal
                     </button>
                     <button
                         onClick={handleDownload}
@@ -302,6 +331,13 @@ const InvoiceDetail = () => {
                         </div>
                         <div className="absolute top-0 right-0 -mr-10 -mt-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
                     </div>
+                </div>
+            </div>
+
+            {/* Hidden Thermal Receipt Content */}
+            <div className="hidden">
+                <div id="thermal-receipt-content">
+                    <ThermalReceipt invoice={invoice} hospitalInfo={hospitalInfo} />
                 </div>
             </div>
         </div>

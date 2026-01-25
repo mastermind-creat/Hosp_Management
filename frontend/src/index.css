@@ -108,7 +108,7 @@
     }
 
     .no-print {
-        display: none !important;
+        @apply hidden !important;
     }
 
     .print-full-width {
@@ -116,4 +116,62 @@
         margin: 0 !important;
         padding: 0 !important;
     }
+}
+
+/* React Datepicker Dark Mode Overrides */
+.dark .react-datepicker {
+    @apply bg-slate-800 border-slate-700 text-slate-100 !important;
+}
+
+.dark .react-datepicker__header {
+    @apply bg-slate-900 border-slate-700 !important;
+}
+
+.dark .react-datepicker__current-month,
+.dark .react-datepicker__day-name,
+.dark .react-datepicker-time__header {
+    @apply text-slate-100 !important;
+}
+
+.dark .react-datepicker__day {
+    @apply text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-colors !important;
+}
+
+.dark .react-datepicker__day--selected,
+.dark .react-datepicker__day--keyboard-selected {
+    @apply bg-indigo-600 text-white !important;
+}
+
+.dark .react-datepicker__day--disabled {
+    @apply text-slate-600 !important;
+}
+
+/* Select & Option Dark Theme Fix - Aggressive Overrides */
+.dark select {
+    background-color: #0f172a !important;
+    /* slate-900 */
+    color: #f8fafc !important;
+    /* slate-50 */
+    border-color: #334155 !important;
+    /* slate-700 */
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+}
+
+.dark select option {
+    background-color: #1e293b !important;
+    /* slate-800 */
+    color: #f8fafc !important;
+    /* slate-50 */
+}
+
+/* Specific fix for the Patient Form inputs if they are still white */
+.dark input,
+.dark select,
+.dark textarea {
+    color-scheme: dark;
 }

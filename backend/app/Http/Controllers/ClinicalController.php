@@ -16,7 +16,13 @@ class ClinicalController extends Controller
 {
     public function show($id)
     {
-        $visit = PatientVisit::with(['vitals', 'prescriptions.items', 'patient'])->findOrFail($id);
+        $visit = PatientVisit::with([
+            'vitals', 
+            'prescriptions.items', 
+            'patient',
+            'visitServices.service',
+            'testRequests.test'
+        ])->findOrFail($id);
         return response()->json($visit);
     }
 
@@ -200,5 +206,76 @@ class ClinicalController extends Controller
         );
 
         return response()->json($vitals, 201);
+    }
+
+    public function storeLabRequests(Request $request, $visitId)
+    {
+        $visit = PatientVisit::findOrFail($visitId);
+
+        if ($visit->status === 'completed') {
+            return response()->json(['error' => 'Completed encounters are read-only'], 403);
+        }
+
+        $validated = $request->validate([
+            'tests' => 'required|array|min:1',
+            'tests.*.id' => 'required|exists:lab_tests,id',
+            'priority' => 'nullable|in:routine,urgent,stat',
+            'clinical_notes' => 'nullable|string',
+        ]);
+
+        return DB::transaction(function () use ($visit, $validated) {
+            $requests = [];
+            foreach ($validated['tests'] as $test) {
+                $requests[] = \App\Models\TestRequest::create([
+                    'visit_id' => $visit->id,
+                    'patient_id' => $visit->patient_id,
+                    'test_id' => $test['id'],
+                    'priority' => $validated['priority'] ?? 'routine',
+                    'clinical_notes' => $validated['clinical_notes'] ?? null,
+                    'request_number' => 'LAB-' . strtoupper(Str::random(10)),
+                    'request_date' => now(),
+                    'requested_by' => auth()->id(),
+                    'status' => 'pending',
+                ]);
+            }
+
+            return response()->json($requests, 201);
+        });
+    }
+
+    public function storeServices(Request $request, $visitId)
+    {
+        $visit = PatientVisit::findOrFail($visitId);
+
+        if ($visit->status === 'completed') {
+            return response()->json(['error' => 'Completed encounters are read-only'], 403);
+        }
+
+        $validated = $request->validate([
+            'services' => 'required|array|min:1',
+            'services.*.id' => 'required|exists:services,id',
+            'services.*.quantity' => 'nullable|integer|min:1',
+            'services.*.notes' => 'nullable|string',
+        ]);
+
+        return DB::transaction(function () use ($visit, $validated) {
+            $visitServices = [];
+            foreach ($validated['services'] as $item) {
+                $service = \App\Models\Service::findOrFail($item['id']);
+                $quantity = $item['quantity'] ?? 1;
+                
+                $visitServices[] = \App\Models\VisitService::create([
+                    'visit_id' => $visit->id,
+                    'service_id' => $service->id,
+                    'unit_price' => $service->price,
+                    'quantity' => $quantity,
+                    'total_price' => $service->price * $quantity,
+                    'notes' => $item['notes'] ?? null,
+                    'recorded_by' => auth()->id(),
+                ]);
+            }
+
+            return response()->json($visitServices, 201);
+        });
     }
 }

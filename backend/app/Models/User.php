@@ -91,4 +91,9 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->hasOne(StaffProfile::class);
     }
+
+    public function isAdmin()
+    {
+        return $this->roles()->where('name', 'admin')->exists();
+    }
 }

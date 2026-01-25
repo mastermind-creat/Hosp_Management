@@ -4,6 +4,8 @@ const initialState = {
     theme: localStorage.getItem('theme') || 'light',
     sidebarOpen: true,
     notifications: [],
+    compactMode: localStorage.getItem('compactMode') === 'true',
+    soundEnabled: localStorage.getItem('soundEnabled') !== 'false', // Default to true
 }
 
 const uiSlice = createSlice({
@@ -38,6 +40,14 @@ const uiSlice = createSlice({
         clearNotifications: (state) => {
             state.notifications = []
         },
+        toggleCompactMode: (state) => {
+            state.compactMode = !state.compactMode
+            localStorage.setItem('compactMode', state.compactMode)
+        },
+        toggleSound: (state) => {
+            state.soundEnabled = !state.soundEnabled
+            localStorage.setItem('soundEnabled', state.soundEnabled)
+        },
     },
 })
 
@@ -47,6 +57,8 @@ export const {
     addNotification,
     removeNotification,
     clearNotifications,
+    toggleCompactMode,
+    toggleSound,
 } = uiSlice.actions
 
 export default uiSlice.reducer

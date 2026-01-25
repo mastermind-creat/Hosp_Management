@@ -20,9 +20,11 @@ import {
     Loader2,
     Zap,
     ChevronDown,
-    ArrowRightLeft
+    ArrowRightLeft,
+    FlaskConical,
+    Briefcase
 } from 'lucide-react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
@@ -38,6 +40,9 @@ import { fetchPatientById } from '../../store/slices/patientSlice'
 import api from '../../services/api'
 import { toast } from 'react-hot-toast'
 import TransferModal from '../../components/clinical/TransferModal'
+import DrugSelector from '../../components/clinical/DrugSelector'
+import LabTestSelector from '../../components/clinical/LabTestSelector'
+import ServiceSelector from '../../components/clinical/ServiceSelector'
 
 const encounterSchema = z.object({
     vitals: z.object({
@@ -147,6 +152,8 @@ const EncounterForm = () => {
     const [saving, setSaving] = useState(false)
     const [visitId, setVisitId] = useState(encounterId || null)
     const [isTransferOpen, setIsTransferOpen] = useState(false)
+    const [selectedTests, setSelectedTests] = useState([])
+    const [selectedServices, setSelectedServices] = useState([])
     const isEditMode = !!encounterId
 
     const { register, control, handleSubmit, formState: { errors }, trigger, watch, setValue } = useForm({
@@ -209,6 +216,15 @@ const EncounterForm = () => {
                         }, [])
                         setValue('prescriptions', allItems)
                     }
+
+                    // Populate Tests & Services
+                    if (res.test_requests) {
+                        setSelectedTests(res.test_requests.map(tr => tr.test).filter(Boolean))
+                    }
+                    if (res.visit_services) {
+                        setSelectedServices(res.visit_services.map(vs => vs.service).filter(Boolean))
+                    }
+
                 } catch (err) {
                     toast.error('Failed to load encounter details')
                 }
@@ -320,6 +336,19 @@ const EncounterForm = () => {
                 })
             }
 
+            if (selectedTests.length > 0) {
+                await api.post(`/clinical/visits/${id}/lab-requests`, {
+                    tests: selectedTests.map(t => ({ id: t.id })),
+                    priority: 'routine'
+                })
+            }
+
+            if (selectedServices.length > 0) {
+                await api.post(`/clinical/visits/${id}/services`, {
+                    services: selectedServices.map(s => ({ id: s.id, quantity: 1 }))
+                })
+            }
+
             toast.success('Encounter completed successfully!')
             // No longer auto-navigate immediately to allow for transfer choice
             // navigate(`/patients/${patientId}`)
@@ -379,6 +408,8 @@ const EncounterForm = () => {
             <div className="flex p-1.5 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-x-auto scollbar-hide">
                 <TabButton id="vitals" active={activeTab === 'vitals'} label="Vitals" icon={Activity} onClick={setActiveTab} />
                 <TabButton id="notes" active={activeTab === 'notes'} label="Clinical Notes" icon={Stethoscope} onClick={setActiveTab} />
+                <TabButton id="investigations" active={activeTab === 'investigations'} label="Investigations" icon={FlaskConical} onClick={setActiveTab} />
+                <TabButton id="services" active={activeTab === 'services'} label="Services" icon={Briefcase} onClick={setActiveTab} />
                 <TabButton id="rx" active={activeTab === 'rx'} label="Prescriptions" icon={Pill} onClick={setActiveTab} />
             </div>
 
@@ -579,6 +610,61 @@ const EncounterForm = () => {
                         </motion.div>
                     )}
 
+                    {/* Investigations Tab */}
+                    {activeTab === 'investigations' && (
+                        <motion.div
+                            key="investigations"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm space-y-6"
+                        >
+                            <h3 className="font-bold text-slate-900 dark:text-white">Order Lab Tests</h3>
+                            <LabTestSelector
+                                selectedTests={selectedTests}
+                                onTestsChange={setSelectedTests}
+                            />
+
+                            <div className="flex justify-end pt-6 border-t border-slate-100 dark:border-slate-700">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('services')}
+                                    className="flex items-center px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-200 dark:shadow-none"
+                                >
+                                    Continue to Services
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* Services Tab */}
+                    {activeTab === 'services' && (
+                        <motion.div
+                            key="services"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm space-y-6"
+                        >
+                            <h3 className="font-bold text-slate-900 dark:text-white">Procedures & Services</h3>
+                            <ServiceSelector
+                                selectedServices={selectedServices}
+                                onServicesChange={setSelectedServices}
+                            />
+
+                            <div className="flex justify-end pt-6 border-t border-slate-100 dark:border-slate-700">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('rx')}
+                                    className="flex items-center px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-200 dark:shadow-none"
+                                >
+                                    Continue to Prescriptions
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
+
                     {/* Prescription Tab */}
                     {activeTab === 'rx' && (
                         <motion.div
@@ -601,13 +687,23 @@ const EncounterForm = () => {
 
                             <div className="space-y-4">
                                 {fields.map((field, index) => (
-                                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl relative group">
+                                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl relative group z-10 focus-within:z-20">
                                         <div className="md:col-span-4 space-y-1">
                                             <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Drug Name</label>
-                                            <input
-                                                {...register(`prescriptions.${index}.drug_name`)}
-                                                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none dark:text-white"
-                                                placeholder="e.g Panadol"
+                                            <Controller
+                                                control={control}
+                                                name={`prescriptions.${index}.drug_name`}
+                                                render={({ field }) => (
+                                                    <DrugSelector
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        onSelect={(drug) => {
+                                                            setValue(`prescriptions.${index}.dosage`, drug.strength || '')
+                                                            // Also auto-calculate quantity if possible, or focus next field
+                                                        }}
+                                                        placeholder="Search generic/brand..."
+                                                    />
+                                                )}
                                             />
                                         </div>
                                         <div className="md:col-span-2 space-y-1">

@@ -94,7 +94,13 @@ class VisitQueueController extends Controller
     public function myQueue(Request $request)
     {
         $user = auth()->user();
-        $departmentId = $user->staffProfile->department_id ?? null;
+        $departmentId = $request->get('department_id') ?: ($user->staffProfile->department_id ?? null);
+
+        // Admins can see any queue. If no department_id is provided and they aren't assigned one,
+        // pick the first active department.
+        if ($user->isAdmin() && !$departmentId) {
+            $departmentId = Department::where('is_active', true)->first()?->id;
+        }
 
         if (!$departmentId) {
             return response()->json(['error' => 'You are not assigned to any department'], 403);

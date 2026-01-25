@@ -19,6 +19,80 @@ class InvoiceService
     }
 
     /**
+     * Get all billable items from a visit (drugs, tests, services)
+     */
+    public function getVisitItems(string $visitId): array
+    {
+        $visit = \App\Models\PatientVisit::with(['prescriptions.items.drug', 'testRequests.test', 'visitServices.service'])->findOrFail($visitId);
+        $items = [];
+
+        // Use a keyed array to group items
+        $groupedItems = [];
+
+        // Add prescribed drugs
+        if ($visit->prescriptions) {
+            foreach ($visit->prescriptions as $prescription) {
+                foreach ($prescription->items as $rxItem) {
+                    $drug = $rxItem->drug;
+                    if ($drug) {
+                        $key = "drug_{$drug->id}";
+                        if (!isset($groupedItems[$key])) {
+                            $groupedItems[$key] = [
+                                'item_type' => 'drug',
+                                'item_name' => "{$drug->generic_name} ({$rxItem->dosage})",
+                                'reference_id' => $drug->id,
+                                'quantity' => 0,
+                                'unit_price' => (float)$drug->unit_price,
+                            ];
+                        }
+                        $groupedItems[$key]['quantity'] += (int)$rxItem->quantity;
+                    }
+                }
+            }
+        }
+
+        // Add lab tests
+        if ($visit->testRequests) {
+            foreach ($visit->testRequests as $testRequest) {
+                if ($testRequest->test) {
+                    $key = "test_{$testRequest->test->id}";
+                    if (!isset($groupedItems[$key])) {
+                        $groupedItems[$key] = [
+                            'item_type' => 'test',
+                            'item_name' => $testRequest->test->test_name,
+                            'reference_id' => $testRequest->test->id,
+                            'quantity' => 0,
+                            'unit_price' => (float)($testRequest->test->price ?? 0),
+                        ];
+                    }
+                    $groupedItems[$key]['quantity'] += 1;
+                }
+            }
+        }
+
+        // Add services
+        if ($visit->visitServices) {
+            foreach ($visit->visitServices as $visitService) {
+                if ($visitService->service) {
+                    $key = "service_{$visitService->service->id}";
+                    if (!isset($groupedItems[$key])) {
+                        $groupedItems[$key] = [
+                            'item_type' => 'service',
+                            'item_name' => $visitService->service->name,
+                            'reference_id' => $visitService->service->id,
+                            'quantity' => 0,
+                            'unit_price' => (float)$visitService->unit_price,
+                        ];
+                    }
+                    $groupedItems[$key]['quantity'] += (int)$visitService->quantity;
+                }
+            }
+        }
+
+        return array_values($groupedItems);
+    }
+
+    /**
      * Create a new invoice with items
      */
     public function createInvoice(array $data, array $items)
@@ -73,7 +147,12 @@ class InvoiceService
             $invoice->balance = $invoice->total_amount;
             $invoice->save();
 
-            return $invoice->load('items');
+            // Integrated Payment Recording
+            if (!empty($data['payment']) && isset($data['payment']['amount']) && $data['payment']['amount'] > 0) {
+                $this->recordPayment($invoice->id, $data['payment']);
+            }
+
+            return $invoice->load(['items', 'payments', 'patient', 'creator']);
         });
     }
 

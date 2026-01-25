@@ -49,6 +49,10 @@ class BillingController extends Controller
             'discount_amount' => 'nullable|numeric|min:0',
             'tax_amount' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string',
+            'payment' => 'nullable|array',
+            'payment.amount' => 'required_with:payment|numeric|min:0',
+            'payment.payment_method' => 'required_with:payment|string',
+            'payment.reference_number' => 'nullable|string',
         ]);
 
         try {
@@ -84,5 +88,10 @@ class BillingController extends Controller
         ]);
 
         return response()->json($invoice);
+    }
+
+    public function getVisitItems(Request $request, $visitId)
+    {
+        return response()->json($this->invoiceService->getVisitItems($visitId));
     }
 }
